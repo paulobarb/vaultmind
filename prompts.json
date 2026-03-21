@@ -1,6 +1,4 @@
 {
-  "_info": "This file contains all prompts used by vaultmind. Edit freely — no Python knowledge needed. Fields starting with underscore (_) are comments and are ignored by the scripts.",
-
   "_tip": "Use {placeholders} carefully — they are replaced by the scripts at runtime. Do not remove them. Literal curly braces that are NOT placeholders must be written as {{ and }} so Python does not confuse them with placeholders.",
 
   "grounding": "IMPORTANT: Only use information explicitly present in the notes above. Do not infer, invent, or assume anything not directly written. If something is unclear, say so.",

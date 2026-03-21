@@ -16,7 +16,7 @@
 #   Write in first person. Focus on what I built.
 #   ---end---
 #
-# Output: Vault/Captures/YYYY-MM-DD title/
+# Output: Vault/Captures/title/
 # =============================================================
 
 import os
@@ -179,9 +179,9 @@ def write_note_content(text, note_plan, all_titles_in_batch, instructions, exist
 def write_file(note_plan, body, folder_path, date_str) -> str:
     """Write a single note to disk with Obsidian frontmatter."""
     title      = note_plan.get("title", "Untitled")
-    tags       = note_plan.get("tags", [])
+    tags = [t.replace(" ", "-").lower() for t in note_plan.get("tags", [])]
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
-    filename   = f"{date_str} {safe_title}.md"
+    filename   = f"{safe_title}.md"
     filepath   = os.path.join(folder_path, filename)
 
     fm_lines = (
@@ -245,7 +245,7 @@ def main():
 
     date_str    = datetime.datetime.now().strftime("%Y-%m-%d")
     folder_name = re.sub(r'[\\/*?:"<>|]', "", plan[0]["title"]) if plan else "dump"
-    folder_path = os.path.join(VAULT_PATH, OUTPUT_BASE, f"{date_str} {folder_name}")
+    folder_path = os.path.join(VAULT_PATH, OUTPUT_BASE, f"{folder_name}")
     os.makedirs(folder_path, exist_ok=True)
 
     all_titles_in_batch = [n["title"] for n in plan]
