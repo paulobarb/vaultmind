@@ -23,6 +23,11 @@ Every script follows the same flow:
 - An Obsidian vault
 
 ---
+## Demo
+
+[![vaultmind demo](https://img.youtube.com/vi/hqVmcqMPpUE/maxresdefault.jpg)](https://www.youtube.com/watch?v=hqVmcqMPpUE)
+
+---
 
 ## Installation
 
