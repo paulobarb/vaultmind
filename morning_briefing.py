@@ -12,6 +12,7 @@
 # =============================================================
 
 import os
+from pathlib import Path
 import sys
 import glob
 import json
@@ -58,26 +59,33 @@ def collect_notes(days_back: float) -> list[dict]:
     cutoff = datetime.datetime.now() - datetime.timedelta(days=days_back)
     notes  = []
 
-    for path in sorted(
-        glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True),
-        key=os.path.getmtime,
-        reverse=True  # most recently modified first
-    ):
-        if any(skip in path for skip in EXCLUDED_FOLDERS):
+    base_path = Path(VAULT_PATH).expanduser().resolve()
+
+    all_files = sorted(
+        base_path.rglob("*.md"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True
+    )
+
+    for path_obj in all_files:
+        if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
             continue
+        
+        try:
+            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            if mtime >= cutoff:
+                if path_obj.stat().st_size > MAX_FILE_SIZE:
+                    continue
 
-        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-        if mtime >= cutoff:
-            if os.path.getsize(path) > MAX_FILE_SIZE:
-                continue
-
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            notes.append({
-                "name":    os.path.basename(path),
-                "content": content[:MAX_NOTE_CHARS],
-                "mtime":   mtime,
-            })
+                with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                notes.append({
+                    "name":    path_obj.name,
+                    "content": content[:MAX_NOTE_CHARS],
+                    "mtime":   mtime,
+                })
+        except OSError:
+            continue
 
     return notes
 

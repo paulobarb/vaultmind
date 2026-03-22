@@ -10,6 +10,7 @@
 # =============================================================
 
 import os
+from pathlib import Path
 import sys
 import glob
 import json
@@ -62,20 +63,28 @@ def find_recent_notes(hours: int) -> list[dict]:
     cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
     found  = []
 
-    for path in sorted(
-        glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True),
-        key=os.path.getmtime,
+    base_path = Path(VAULT_PATH).expanduser().resolve()
+
+    all_files = sorted(
+        base_path.rglob("*.md"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
         reverse=True
-    ):
-        if any(folder in path for folder in EXCLUDED_FOLDERS):
+    )
+    
+    for path_obj in all_files:
+        if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
             continue
-        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-        if mtime >= cutoff:
-            found.append({
-                "name":  os.path.basename(path),
-                "path":  path,
-                "mtime": mtime,
-            })
+        
+        try:
+            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            if mtime >= cutoff:
+                found.append({
+                    "name":  path_obj.name,
+                    "path":  str(path_obj),
+                    "mtime": mtime,
+                })
+        except OSError:
+            continue
 
     return found
 
