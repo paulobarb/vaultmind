@@ -2,6 +2,7 @@
 
 **Vaultmind** is a local AI tool for Obsidian. It transforms your static notes into an active knowledge base by generating automated insights, daily briefings, and study aids. All powered by [Ollama](https://ollama.com).
 
+[![vaultmind demo](https://img.youtube.com/vi/hqVmcqMPpUE/maxresdefault.jpg)](https://www.youtube.com/watch?v=hqVmcqMPpUE)
 ---
 
 ## Key Features
