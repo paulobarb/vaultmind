@@ -19,21 +19,23 @@
 # Output: Vault/Captures/title/
 # =============================================================
 
-import os
 import sys
 import json
-import glob
 import re
 import datetime
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(__file__))
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 from config import MAX_FILE_SIZE, VAULT_PATH
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
-VAULT_PATH  = os.path.expanduser(VAULT_PATH)
+VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
 OUTPUT_BASE = "Captures"
 
-with open(os.path.join(os.path.dirname(__file__), "prompts.json"), encoding="utf-8") as f:
+PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
+with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 GROUNDING = PROMPTS["grounding"]
@@ -83,18 +85,21 @@ def collect_vault_tags() -> list[str]:
     Passed to the AI so it reuses existing tags instead of inventing new ones.
     """
     tags = set()
-    for path in glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True):
+
+    for path_obj in VAULT_PATH.rglob("*.md"):
         try:
-            if os.path.getsize(path) > MAX_FILE_SIZE:
+            if path_obj.stat().st_size > MAX_FILE_SIZE:
                 continue
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
+
             fm = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
             if fm:
                 for line in fm.group(1).splitlines():
                     m = re.match(r"\s*-\s*(.+)", line)
                     if m:
                         tags.add(m.group(1).strip().lower())
+
             for t in re.findall(r"#([a-zA-Z][a-zA-Z0-9_/-]+)", content):
                 tags.add(t.lower())
         except Exception:
@@ -108,8 +113,8 @@ def collect_note_titles() -> list[str]:
     Strips date prefixes from filenames.
     """
     titles = []
-    for path in glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True):
-        name  = os.path.splitext(os.path.basename(path))[0]
+    for path_obj in VAULT_PATH.rglob("*.md"):
+        name  = path_obj.stem
         clean = re.sub(r"^\d{4}-\d{2}-\d{2}\s+", "", name)
         titles.append(clean)
     return titles
@@ -182,7 +187,8 @@ def write_file(note_plan, body, folder_path, date_str) -> str:
     tags = [t.replace(" ", "-").lower() for t in note_plan.get("tags", [])]
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
     filename   = f"{safe_title}.md"
-    filepath   = os.path.join(folder_path, filename)
+
+    filepath   = Path(folder_path) / filename
 
     fm_lines = (
         ["---", "parent: ", "tags:"]
@@ -190,8 +196,7 @@ def write_file(note_plan, body, folder_path, date_str) -> str:
         + ["font: ", "creation date: " + date_str, "---", "", ""]
     )
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n".join(fm_lines) + body)
+    filepath.write_text("\n".join(fm_lines) + body, encoding="utf-8")
 
     return filepath
 
@@ -205,13 +210,12 @@ def main():
         print(f"{RED}usage: python txt_to_notes.py <file.txt>{R}")
         sys.exit(1)
 
-    source = args[0]
-    if not os.path.exists(source):
+    source = Path(args[0])
+    if not source.exists():
         print(f"{RED}file not found: {source}{R}")
         sys.exit(1)
 
-    with open(source, "r", encoding="utf-8", errors="ignore") as f:
-        raw = f.read()
+    raw = source.read_text(encoding="utf-8", errors="ignore")
 
     instructions, text = parse_input(raw)
 
@@ -245,8 +249,9 @@ def main():
 
     date_str    = datetime.datetime.now().strftime("%Y-%m-%d")
     folder_name = re.sub(r'[\\/*?:"<>|]', "", plan[0]["title"]) if plan else "dump"
-    folder_path = os.path.join(VAULT_PATH, OUTPUT_BASE, f"{folder_name}")
-    os.makedirs(folder_path, exist_ok=True)
+
+    folder_path = VAULT_PATH / OUTPUT_BASE / folder_name
+    folder_path.mkdir(parents=True, exist_ok=True)
 
     all_titles_in_batch = [n["title"] for n in plan]
 

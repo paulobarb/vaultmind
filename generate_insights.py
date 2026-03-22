@@ -12,31 +12,30 @@
 #   0 8 * * 0 /path/to/venv/bin/python /path/to/generate_insights.py
 # =============================================================
 
-import os
 import sys
-import glob
 import json
 import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# add script directory to path so local modules are found
-sys.path.insert(0, os.path.dirname(__file__))
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
 # expand ~ to the full home directory path
-VAULT_PATH     = os.path.expanduser(VAULT_PATH)
-INSIGHT_FOLDER = os.path.join(VAULT_PATH, "Insights")
+VAULT_PATH     = Path(VAULT_PATH).expanduser().resolve()
+INSIGHT_FOLDER = VAULT_PATH / "Insights"
 
 # load all prompts from the shared prompts.json file
 # users can edit prompts.json without touching this script
-with open(os.path.join(os.path.dirname(__file__), "prompts.json"), encoding="utf-8") as f:
+PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
+with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 GROUNDING = PROMPTS["grounding"]  # injected into every prompt to reduce hallucination
 LENSES    = PROMPTS["insights"]["lenses"]  # list of analysis lenses from prompts.json
-
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -56,11 +55,9 @@ def fill_prompt(template: str, **kwargs) -> str:
         result = result.replace("{" + key + "}", str(value))
     return result
 
-
 def get_week_label() -> str:
     """Return the current ISO week number as a string, e.g. 'Week 12'."""
     return f"Week {datetime.datetime.now().isocalendar()[1]}"
-
 
 def collect_recent_notes(days: int) -> list[dict]:
     """
@@ -76,9 +73,7 @@ def collect_recent_notes(days: int) -> list[dict]:
     cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
     notes  = []
 
-    base_path = Path(VAULT_PATH)
-
-    for path_obj in base_path.rglob("*.md"):
+    for path_obj in VAULT_PATH.rglob("*.md"):
         if any(folder in str(path_obj) for folder in EXCLUDED_FOLDERS):
             continue
 
@@ -102,7 +97,6 @@ def collect_recent_notes(days: int) -> list[dict]:
 
     return notes
 
-
 def build_notes_block(notes: list[dict]) -> str:
     """
     Format a list of notes into a single text block for the prompt.
@@ -118,7 +112,6 @@ def build_notes_block(notes: list[dict]) -> str:
     return "\n\n---\n\n".join(
         f"### {n['file']}\n{n['content'][:MAX_NOTE_CHARS]}" for n in notes
     )
-
 
 def run_lens(lens: dict, notes_block: str, period: str, backend: str) -> dict:
     """
@@ -143,9 +136,8 @@ def run_lens(lens: dict, notes_block: str, period: str, backend: str) -> dict:
         grounding=GROUNDING,
         notes_block=notes_block,
     )
-    print(f"   🔍 Running lens: {lens['name']}...")
+    print(f"   Running lens: {lens['name']}...")
     return {"name": lens["name"], "result": call_ai(prompt, backend)}
-
 
 def run_synthesis(lens_results: list[dict], period: str, backend: str) -> str:
     """
@@ -171,9 +163,8 @@ def run_synthesis(lens_results: list[dict], period: str, backend: str) -> str:
         combined=combined,
         grounding=GROUNDING,
     )
-    print("   🧠 Running final synthesis...")
+    print("   Running final synthesis...")
     return call_ai(prompt, backend)
-
 
 def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
     """
@@ -208,7 +199,6 @@ def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
 
     return base_tags[:6]
 
-
 def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int):
     """
     Write the final insight note to the Insights folder in the vault.
@@ -222,14 +212,14 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
         synthesis:    The final synthesis text.
         note_count:   Number of notes that were analyzed (for reference).
     """
-    os.makedirs(INSIGHT_FOLDER, exist_ok=True)
 
     date_str     = datetime.datetime.now().strftime("%Y-%m-%d")
     period_label = "Week" if DAYS_BACK <= 7 else "Monthly"
     week_label   = get_week_label()
     filename     = f"{date_str} {period_label} Insight.md"
-    filepath     = os.path.join(INSIGHT_FOLDER, filename)
-
+    INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
+    filepath = INSIGHT_FOLDER / filename
+    
     tags = extract_tags(lens_results, synthesis)
 
     # build frontmatter as a list of lines to avoid f-string issues
@@ -244,8 +234,7 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
     for r in lens_results:
         lines += [f"## 🔍 {r['name']}", "", r["result"], ""]
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n".join(fm_lines) + "\n".join(lines))
+    filepath.write_text("\n".join(fm_lines) + "\n".join(lines), encoding="utf-8")
 
     print(f"\n✅ Insight saved: {filepath}")
 
