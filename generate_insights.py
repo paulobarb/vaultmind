@@ -39,7 +39,6 @@ with PROMPTS_PATH.open(encoding="utf-8") as f:
 GROUNDING = PROMPTS["grounding"]
 LENSES    = PROMPTS["insights"]["lenses"]
 
-
 def fill_prompt(template: str, **kwargs) -> str:
     """
     Safe placeholder replacement that won't crash on literal { } in the template.
@@ -50,7 +49,6 @@ def fill_prompt(template: str, **kwargs) -> str:
     for key, value in kwargs.items():
         result = result.replace("{" + key + "}", str(value))
     return result
-
 
 def get_week_label() -> str:
     """Return the current ISO week number as a string, e.g. 'Week 12'."""
@@ -143,8 +141,18 @@ def collect_recent_notes(days: int) -> list[dict]:
             print(f"Error accessing {path_obj}: {e}")
             continue
 
-    return notes
+                print(f"Trying to open: {path_obj}")
 
+                with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+
+                notes.append({"file": path_obj.name, "content": content})
+
+        except OSError as e:
+            print(f"Error accessing {path_obj}: {e}")
+            continue
+
+    return notes
 
 def build_notes_block(notes: list[dict]) -> str:
     """

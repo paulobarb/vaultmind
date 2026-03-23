@@ -11,25 +11,27 @@
 #   0 8 * * * /path/to/venv/bin/python /path/to/morning_briefing.py
 # =============================================================
 
-import os
+from pathlib import Path
 import sys
-import glob
 import json
 import datetime
 
-sys.path.insert(0, os.path.dirname(__file__))
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
-VAULT_PATH      = os.path.expanduser(VAULT_PATH)
-BRIEFING_FOLDER = os.path.join(VAULT_PATH, "Briefings")
+VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
+BRIEFING_FOLDER = VAULT_PATH / "Briefings"
+
 
 # load prompts from prompts.json
-with open(os.path.join(os.path.dirname(__file__), "prompts.json"), encoding="utf-8") as f:
+PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
+with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 GROUNDING = PROMPTS["grounding"]
-
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -40,7 +42,6 @@ def fill_prompt(template: str, **kwargs) -> str:
     for key, value in kwargs.items():
         result = result.replace("{" + key + "}", str(value))
     return result
-
 
 def collect_notes(days_back: float) -> list[dict]:
     """
@@ -58,29 +59,33 @@ def collect_notes(days_back: float) -> list[dict]:
     cutoff = datetime.datetime.now() - datetime.timedelta(days=days_back)
     notes  = []
 
-    for path in sorted(
-        glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True),
-        key=os.path.getmtime,
-        reverse=True  # most recently modified first
-    ):
-        if any(skip in path for skip in EXCLUDED_FOLDERS):
+    all_files = sorted(
+        VAULT_PATH.rglob("*.md"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True
+    )
+
+    for path_obj in all_files:
+        if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
+            continue
+        
+        try:
+            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            if mtime >= cutoff:
+                if path_obj.stat().st_size > MAX_FILE_SIZE:
+                    continue
+
+                with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                notes.append({
+                    "name":    path_obj.name,
+                    "content": content[:MAX_NOTE_CHARS],
+                    "mtime":   mtime,
+                })
+        except OSError:
             continue
 
-        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-        if mtime >= cutoff:
-            if os.path.getsize(path) > MAX_FILE_SIZE:
-                continue
-
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            notes.append({
-                "name":    os.path.basename(path),
-                "content": content[:MAX_NOTE_CHARS],
-                "mtime":   mtime,
-            })
-
     return notes
-
 
 def build_notes_block(notes: list[dict]) -> str:
     """
@@ -97,7 +102,6 @@ def build_notes_block(notes: list[dict]) -> str:
         f"### {n['name']} (modified {n['mtime'].strftime('%Y-%m-%d %H:%M')})\n{n['content']}"
         for n in notes
     )
-
 
 def generate_briefing(yesterday_notes: list[dict], today_notes: list[dict], backend: str) -> str:
     """
@@ -127,7 +131,6 @@ def generate_briefing(yesterday_notes: list[dict], today_notes: list[dict], back
 
     return call_ai(prompt, backend)
 
-
 def write_briefing(content: str) -> str:
     """
     Write the briefing to the Briefings folder in the vault.
@@ -140,11 +143,11 @@ def write_briefing(content: str) -> str:
     Returns:
         The full file path of the saved note.
     """
-    os.makedirs(BRIEFING_FOLDER, exist_ok=True)
+    BRIEFING_FOLDER.mkdir(parents=True, exist_ok=True)
 
     date_str = datetime.datetime.now().strftime("%Y-%m-%d")
     filename = f"{date_str} Morning Briefing.md"
-    filepath = os.path.join(BRIEFING_FOLDER, filename)
+    filepath = BRIEFING_FOLDER / filename
 
     fm_lines = [
         "---",
@@ -158,8 +161,7 @@ def write_briefing(content: str) -> str:
         "",
     ]
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n".join(fm_lines) + content)
+    filepath.write_text("\n".join(fm_lines) + content, encoding="utf-8")
 
     return filepath
 

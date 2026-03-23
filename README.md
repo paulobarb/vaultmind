@@ -86,7 +86,7 @@ The Daily Momentum Builder
     It provides a "Suggested Focus," acting as a bridge between the work you finished and the work you haven't started yet, ensuring you never wake up with a "cold start" in your vault.
 
 ```bash
-python morning_briefing.py
+python generate_insights.py
 ```
 
 ---

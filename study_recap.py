@@ -9,20 +9,22 @@
 # Output: Vault/Study Recaps/YYYY-MM-DD HH-MM Recap — NoteName.md
 # =============================================================
 
-import os
+from pathlib import Path
 import sys
-import glob
 import json
 import datetime
 
-sys.path.insert(0, os.path.dirname(__file__))
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
-VAULT_PATH   = os.path.expanduser(VAULT_PATH)
-RECAP_FOLDER = os.path.join(VAULT_PATH, "Study Recaps")
+VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
+RECAP_FOLDER = VAULT_PATH / "Study Recaps"
 
-with open(os.path.join(os.path.dirname(__file__), "prompts.json"), encoding="utf-8") as f:
+PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
+with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 GROUNDING = PROMPTS["grounding"]
@@ -62,32 +64,30 @@ def find_recent_notes(hours: int) -> list[dict]:
     cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
     found  = []
 
-    for path in sorted(
-        glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True),
-        key=os.path.getmtime,
+    base_path = Path(VAULT_PATH).expanduser().resolve()
+
+    all_files = sorted(
+        base_path.rglob("*.md"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
         reverse=True
-    ):
-        if any(folder in path for folder in EXCLUDED_FOLDERS):
+    )
+    
+    for path_obj in all_files:
+        if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
             continue
-        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-        if mtime >= cutoff:
-            found.append({
-                "name":  os.path.basename(path),
-                "path":  path,
-                "mtime": mtime,
-            })
+        
+        try:
+            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            if mtime >= cutoff:
+                found.append({
+                    "name":  path_obj.name,
+                    "path":  path_obj,
+                    "mtime": mtime,
+                })
+        except OSError:
+            continue
 
     return found
-
-
-def load_note(path: str) -> str:
-    """Read a note file and return its content. Returns empty string on error."""
-    try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
-    except Exception:
-        return ""
-
 
 def index_all_notes() -> dict[str, str]:
     """
@@ -95,14 +95,12 @@ def index_all_notes() -> dict[str, str]:
     Only reads the first 500 chars of each note to keep memory usage low.
     """
     notes = {}
-    for path in glob.glob(f"{VAULT_PATH}/**/*.md", recursive=True):
-        name = os.path.splitext(os.path.basename(path))[0]
+    for path_obj in VAULT_PATH.rglob("*.md"):
         try:
-            if os.path.getsize(path) > MAX_FILE_SIZE:
+            if path_obj.stat().st_size > MAX_FILE_SIZE:
                 continue
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()[:500]
-            notes[name] = content
+            content = path_obj.read_text(encoding="utf-8", errors="ignore")[:500]
+            notes[path_obj.stem] = content
         except Exception:
             continue
     return notes
@@ -143,11 +141,12 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
             filename = cmd[4:].strip()
             if not filename.endswith(".md"):
                 filename += ".md"
-            matches = glob.glob(f"{VAULT_PATH}/**/{filename}", recursive=True)
+
+            matches = list(VAULT_PATH.rglob(filename))
             if matches:
-                path  = matches[0]
-                mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-                note  = {"name": filename, "path": path, "mtime": mtime}
+                path_obj  = matches[0]
+                mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+                note  = {"name": filename, "path": path_obj, "mtime": mtime}
                 if filename not in [n["name"] for n in selected]:
                     selected.append(note)
                     print(f"  {GREEN}added: {filename}{R}")
@@ -188,18 +187,20 @@ def generate_recap(notes_data: list[dict], all_notes: dict, backend: str) -> str
 
 def write_recap(content: str, note_names: list[str]) -> str:
     """Write the recap note to the Study Recaps folder."""
-    os.makedirs(RECAP_FOLDER, exist_ok=True)
+    RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
 
     date_str  = datetime.datetime.now().strftime("%Y-%m-%d")
     time_str  = datetime.datetime.now().strftime("%H-%M")
-    base_name = os.path.splitext(note_names[0])[0] if note_names else "Session"
+
+    base_name = Path(note_names[0]).stem if note_names else "Session"
     if len(note_names) > 1:
         base_name += f" +{len(note_names)-1} more"
 
-    filename   = f"{date_str} {time_str} Recap — {base_name}.md"
-    filepath   = os.path.join(RECAP_FOLDER, filename)
+    filename   = f"{date_str} {time_str} Recap - {base_name}.md"
+    filepath   = RECAP_FOLDER / filename
+
     tags_lines = [
-        "  - " + os.path.splitext(n)[0].lower().replace(" ", "-")
+        f"  - {Path(n).stem.lower().replace(' ', '-')}"
         for n in note_names[:5]
     ]
 
@@ -209,9 +210,7 @@ def write_recap(content: str, note_names: list[str]) -> str:
         + ["---", "", ""]
     )
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("\n".join(fm_lines) + content)
-
+    filepath.write_text("\n".join(fm_lines) + content, encoding="utf-8")
     return filepath
 
 
@@ -233,7 +232,8 @@ def main():
     print(f"\n{DIM}  loading {len(selected)} note(s)...{R}")
     notes_data = []
     for n in selected:
-        content = load_note(n["path"])
+        content = n["path"].read_text(encoding="utf-8", errors="ignore")
+
         notes_data.append({
             "name":    n["name"],
             "content": content[:MAX_NOTE_CHARS],
