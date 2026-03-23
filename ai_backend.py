@@ -1,0 +1,138 @@
+# =============================================================
+# vaultmind — ai_backend.py
+# =============================================================
+# Shared AI caller used by all scripts.
+# All Ollama communication goes through this file.
+# =============================================================
+
+import os
+import sys
+import requests
+
+sys.path.insert(0, os.path.dirname(__file__))
+from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH
+
+# terminal colors
+R    = "\033[0m"
+RED  = "\033[31m"
+YELLOW = "\033[33m"
+GREEN  = "\033[32m"
+DIM    = "\033[2m"
+
+
+def check_ollama() -> bool:
+    base_url = OLLAMA_API_URL.replace("/api/generate", "")
+
+    # check if Ollama is running
+    try:
+        r = requests.get(f"{base_url}/api/tags", timeout=5)
+        r.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        print(f"{RED}  Error: Ollama is not running.{R}")
+        print(f"     Start it with: {YELLOW}ollama serve{R}")
+        return False
+    except Exception as e:
+        print(f"{RED}  Error: Could not reach Ollama: {e}{R}")
+        return False
+
+    # check if the configured model is available
+    models = [m["name"] for m in r.json().get("models", [])]
+    if not any(OLLAMA_MODEL in m for m in models):
+        print(f"{RED}  Error: Model '{OLLAMA_MODEL}' not found.{R}")
+        print(f"     Available models: {', '.join(models) if models else 'none'}")
+        return False
+
+    return True
+
+
+def check_vault() -> bool:
+    """
+    Check if the configured vault path exists.
+    Prints a friendly error if not found.
+
+    Returns:
+        True if vault exists, False otherwise.
+    """
+    vault = os.path.expanduser(VAULT_PATH)
+    if not os.path.isdir(vault):
+        print(f"{RED}  Error: Vault not found at: {vault}{R}")
+        print("     Update VAULT_PATH in config.py")
+        return False
+    return True
+
+
+def run_startup_checks() -> None:
+    print(f"{DIM}  running startup checks...{R}")
+
+    vault_ok  = check_vault()
+    ollama_ok = check_ollama()
+
+    if not vault_ok or not ollama_ok:
+        print(f"\n{RED}  fix the issues above and try again.{R}\n")
+        sys.exit(1)
+
+    print(f"{GREEN}  all checks passed{R}\n")
+
+
+def get_backend() -> str:
+    """
+    Read the --api flag from command line arguments.
+    """
+    return "ollama"
+
+
+def call_ai(prompt: str, backend: str = "ollama", timeout: int = None) -> str:
+    """
+    Send a prompt to the configured AI backend and return the response text.
+
+    Args:
+        prompt:  The full prompt string to send to the model.
+        backend: Which backend to use. Currently only 'ollama' is supported.
+        timeout: Override the default timeout from config.py (in seconds).
+
+    Returns:
+        The model's response as a stripped string.
+    """
+    return _call_ollama(prompt, timeout or TIMEOUT)
+
+
+def _call_ollama(prompt: str, timeout: int) -> str:
+    """
+    Internal function that makes the actual HTTP request to the Ollama API.
+
+    Args:
+        prompt:  The prompt to send.
+        timeout: Max seconds to wait for a response.
+
+    Returns:
+        The model's response text, stripped of leading/trailing whitespace.
+    """
+    response = requests.post(
+        OLLAMA_API_URL,
+        json={
+            "model":      OLLAMA_MODEL,
+            "prompt":     prompt,
+            "stream":     False,
+            "keep_alive": KEEP_ALIVE,
+            "options": {
+                "temperature":    TEMPERATURE,
+                "top_p":          0.9,
+                "repeat_penalty": 1.1,
+                "num_ctx":        NUM_CTX,
+            }
+        },
+        timeout=timeout,
+    )
+
+    response.raise_for_status()
+    data = response.json()
+
+    if "response" not in data:
+        raise ValueError(f"Unexpected Ollama response format: {data}")
+
+    return data["response"].strip()
+
+
+def backend_label(backend: str = "ollama") -> str:
+    """Return a human-readable label for the current backend."""
+    return f"Ollama ({OLLAMA_MODEL})"
