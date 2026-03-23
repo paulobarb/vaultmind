@@ -56,7 +56,7 @@ def check_vault() -> bool:
     vault = os.path.expanduser(VAULT_PATH)
     if not os.path.isdir(vault):
         print(f"{RED}  Error: Vault not found at: {vault}{R}")
-        print(f"     Update VAULT_PATH in config.py")
+        print("     Update VAULT_PATH in config.py")
         return False
     return True
 

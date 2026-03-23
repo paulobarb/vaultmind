@@ -25,11 +25,11 @@ import re
 import datetime
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
-sys.path.insert(0, str(SCRIPT_DIR))
-
 from config import MAX_FILE_SIZE, VAULT_PATH
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
 OUTPUT_BASE = "Captures"

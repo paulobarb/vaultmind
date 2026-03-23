@@ -16,11 +16,11 @@ import sys
 import json
 import datetime
 
-SCRIPT_DIR = Path(__file__).parent
-sys.path.insert(0, str(SCRIPT_DIR))
-
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
 BRIEFING_FOLDER = VAULT_PATH / "Briefings"
@@ -170,7 +170,7 @@ def main():
     backend = get_backend()
     run_startup_checks()
 
-    print(f"\n☀️  morning briefing")
+    print("\n☀️  morning briefing")
     print(f"   backend : {backend_label(backend)}")
     print(f"   vault   : {VAULT_PATH}\n")
 
