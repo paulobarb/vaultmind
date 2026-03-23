@@ -81,9 +81,8 @@ Vaultmind is customizable via `config.py`.
 
 The Daily Momentum Builder
 
-    It categorizes notes into "Yesterday" (execution) and "Today" (planning). It scans for unfinished tasks (empty checkboxes) and unresolved thoughts.
-
-    It provides a "Suggested Focus," acting as a bridge between the work you finished and the work you haven't started yet, ensuring you never wake up with a "cold start" in your vault.
+- It categorizes notes into "Yesterday" (execution) and "Today" (planning). It scans for unfinished tasks (empty checkboxes) and unresolved thoughts.
+- It provides a "Suggested Focus," acting as a bridge between the work you finished and the work you haven't started yet, ensuring you never wake up with a "cold start" in your vault.
 
 ```bash
 python generate_insights.py
@@ -95,9 +94,8 @@ python generate_insights.py
 
 It uses a Parallel Processing model to run your notes through multiple "lenses" (like a Therapist or a Pattern Detector) simultaneously to save time.
 
-    It reads a file called AI_State.md at startup. This file contains a compressed history of who you were last week.
-
-    The AI compares your current notes against that state to identify "drift"—checking if you are actually making progress on your goals or just repeating the same cycles. It then updates the state file, making the AI following your journey every time you run it.
+- It reads a file called AI_State.md at startup. This file contains a compressed history of who you were last week.
+- The AI compares your current notes against that state to identify "drift"—checking if you are actually making progress on your goals or just repeating the same cycles. It then updates the state file, making the AI following your journey every time you run it.
 
 ```bash
 python generate_insights.py
@@ -109,9 +107,8 @@ python generate_insights.py
 
 This is an Interactive Tool designed to fight the "forgetting curve". Unlike the other scripts, this one waits for your input.
 
-    It auto-detects notes modified in a specific window (e.g., your last 24 hours of studying) and lets you manually refine the list. It then cross-references these with the rest of your vault to find "hidden connections."
-
-    The Result: It generates a dedicated recap note filled with Spaced Repetition questions. It transforms passive reading into active testing.
+- It auto-detects notes modified in a specific window (e.g., your last 24 hours of studying) and lets you manually refine the list. It then cross-references these with the rest of your vault to find "hidden connections."
+- The Result: It generates a dedicated recap note filled with Spaced Repetition questions. It transforms passive reading into active testing.
 
 ```bash
 python study_recap.py
@@ -123,9 +120,8 @@ python study_recap.py
 
 This script handles the "messy" data—transcripts, braindumps, or long articles. It uses a Plan-then-Execute architecture to prevent the AI from getting lost in long texts.
 
-    Pass 1 (Planning): The AI reads the raw text and creates a JSON "blueprint." It decides how many notes are needed, what the titles should be, and which existing tags from your vault to reuse.
-
-    Pass 2 (Writing): Using that blueprint, it writes the actual content, automatically creating [[Wikilinks]] between the new notes and your existing knowledge base.
+- Pass 1 (Planning): The AI reads the raw text and creates a JSON "blueprint." It decides how many notes are needed, what the titles should be, and which existing tags from your vault to reuse.
+- Pass 2 (Writing): Using that blueprint, it writes the actual content, automatically creating [[Wikilinks]] between the new notes and your existing knowledge base.
 
 ```bash
 python txt_to_notes.py my_transcript.txt
