@@ -137,10 +137,6 @@ def collect_recent_notes(days: int) -> list[dict]:
 
                 notes.append({"file": path_obj.name, "content": content})
 
-        except OSError as e:
-            print(f"Error accessing {path_obj}: {e}")
-            continue
-
                 print(f"Trying to open: {path_obj}")
 
                 with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
