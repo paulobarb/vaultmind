@@ -1,7 +1,7 @@
 # -------------------------------------------------------------
 # Model Configuration
 # -------------------------------------------------------------
-OLLAMA_MODEL = "deepseek-r1"    # Ollama model to use
+OLLAMA_MODEL = "llama3.1:8b"    # Ollama model to use
 
 TEMPERATURE  = 0.2              # Controls randomness. Lower = more factual, less hallucination.
                                 # Range: 0.0 (deterministic) to 1.0 (creative). Default: 0.2
