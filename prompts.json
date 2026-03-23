@@ -1,0 +1,75 @@
+{
+  "_tip": "Use {placeholders} carefully — they are replaced by the scripts at runtime. Do not remove them. Literal curly braces that are NOT placeholders must be written as {{ and }} so Python does not confuse them with placeholders.",
+
+  "grounding": "STRICT RULES: 1. Only use information explicitly present in the notes. Do not infer, invent, or assume anything. 2. Output must be PURE Markdown only. 3. NO conversational filler. DO NOT introduce the response (e.g., skip 'Here is your report'). DO NOT conclude the response (e.g., skip 'I hope this helps'). 4. If information is unclear, simply state 'Information not provided'.",
+
+  "_grounding_tip": "The grounding rule is injected into every prompt. Lower it if you want more creative output. Remove it entirely at your own risk, the model can hallucinate more.",
+
+
+  "insights": {
+    "_info": "Used by generate_insights.py. Runs once per week or month depending on DAYS_BACK in config.py.",
+
+    "lenses": [
+      {
+        "_info": "Each lens is a separate AI call. Add, remove or edit lenses freely. The script picks them all up automatically.",
+        "name": "Therapist",
+        "instruction": "Focus on emotional patterns, mood shifts, mental health signals, stress, and psychological well-being. Be compassionate but honest."
+      },
+      {
+        "name": "Coach",
+        "instruction": "Focus on productivity, goals mentioned, tasks completed or stalled, habits, obstacles, and momentum. Be direct."
+      },
+      {
+        "name": "Pattern Detector",
+        "instruction": "Look for recurring phrases, cycles, excuses, or deferred intentions (e.g. 'tomorrow', 'next week', 'when I...'). Identify loops the person might not see."
+      },
+      {
+        "name": "Strengths",
+        "instruction": "Focus only on genuine wins, growth, resilience, and positives — even small ones the person may have mentioned casually without giving themselves credit."
+      },
+      {
+        "name": "Connections",
+        "instruction": "Find links between notes that seem unrelated. Identify threads, ideas that reappear, or topics that might be influencing each other. IMPORTANT: every note reference MUST be formatted as a wikilink [[NoteName]] using the exact filename without extension. Never reference a note as plain text, always [[NoteName]]."
+      }
+    ],
+
+    "lens_prompt": "You are reading someone's personal Obsidian notes from the past {period} through a specific lens.\n\nLENS: {name}\nINSTRUCTION: {instruction}\n\n{grounding}\n\nNOTES:\n{notes_block}\n\nWrite a focused, specific analysis through this lens only. Reference note filenames when relevant. Be concise but insightful — 150 to 250 words.",
+
+    "_lens_prompt_tip": "Placeholders: {period}, {name}, {instruction}, {grounding}, {notes_block}.",
+
+    "synthesis_prompt": "You have analyzed someone's personal Obsidian notes from the past {period} through 5 different lenses:\n\n{combined}\n\n{state_block}\n\n{grounding}\n\nWrite a final synthesis of 150-200 words covering:\n1. The single most important pattern or insight across all lenses\n2. One honest challenge or blind spot\n3. One concrete thing worth trying in the coming week\n\nBe direct, warm, and specific. Only reference things actually mentioned in the analyses above.\n\nThen append exactly this line:\n---STATE_UPDATE---\n\nThen write a compressed summary (max 400 words) of the long-term arc for this person, integrating the historical context with this week's new insights. This will be saved as memory for next week. Include: main topics being studied, long-term patterns, goals in progress, and notable evolution over time.",
+
+    "_synthesis_prompt_tip": "Placeholders: {period}, {combined}, {grounding}, {state_block}. The ---STATE_UPDATE--- separator tells the script where to split the synthesis from the state update."
+  },
+
+
+  "morning_briefing": {
+    "_info": "Used by morning_briefing.py. Runs daily, reads notes modified in the last 24h.",
+
+    "prompt": "You are generating a personal morning briefing for someone's Obsidian vault.\nToday is {weekday}, {date}.\n\n{grounding}\n\nNOTES MODIFIED YESTERDAY:\n{yesterday_block}\n\nNOTES MODIFIED TODAY (so far):\n{today_block}\n\nWrite a concise morning briefing in Markdown with these sections:\n\n# ☀️ Good Morning\nOne warm, motivating sentence based on what they were working on. Be specific, not generic.\n\n## 📝 Yesterday's Activity\nWhat did they work on? Reference specific note names. 2-4 bullet points max.\n\n## ⚠️ Pending & Unfinished\nAny tasks, todos, or unfinished items found in the notes. Use - [ ] format.\nIf nothing found, write \"Nothing pending found in notes.\"\n\n## 🎯 Suggested Focus for Today\nBased on what's in progress, suggest 1-3 things worth tackling today. Be specific.\n\n## 📅 Notes Modified\nList all note filenames that were modified as [[wikilinks]].\nIMPORTANT: format every single note as [[NoteName]] without the .md extension. Never write plain filenames.\n\nBe concise, warm, and specific. Always write in English, regardless of the language of the notes.",
+
+    "_prompt_tip": "Placeholders: {weekday}, {date}, {grounding}, {yesterday_block}, {today_block}. Change 'Always write in English' to match your preferred language."
+  },
+
+
+  "study_recap": {
+    "_info": "Used by study_recap.py. Run after a study session to generate key concepts and review questions.",
+
+    "prompt": "You are creating a study recap for spaced repetition review.\n\n{grounding}\n\nSTUDIED NOTES:\n{notes_block}\n\nALL VAULT NOTE TITLES (for finding connections):\n{all_titles}\n\nGenerate a structured study recap in Markdown with these sections:\n\n# 📚 Key Concepts\nFor each studied note, list the most important concepts, definitions, and ideas.\nUse sub-headings per note. Be specific — extract actual content, not vague descriptions.\nUse [[NoteName]] wikilinks when referencing the studied notes.\n\n## ❓ Review Questions\nWrite 5-10 questions that test understanding of the material studied.\nMix easy recall questions with deeper \"explain why\" or \"what's the difference between\" questions.\nFormat as a numbered list. Do NOT include answers.\n\n## 🔗 Connections to Other Notes\nIdentify 2-5 genuine connections between the studied material and other notes in the vault.\nFormat each as: [[StudiedNote]] -> [[OtherNote]]: one sentence explaining the connection.\nOnly include connections that are genuinely meaningful, not superficial.\n\nWrite in the same language as the studied notes. Be specific and dense — this is for studying, not casual reading.",
+
+    "_prompt_tip": "Placeholders: {grounding}, {notes_block}, {all_titles}. Change '5-10 questions' to adjust review question count."
+  },
+
+
+  "txt_to_notes": {
+    "_info": "Used by txt_to_notes.py. Converts any text file into structured Obsidian notes. Two-pass process: plan then write.",
+
+  "plan_prompt": "You are an expert knowledge curator for Obsidian.\n{instructions_block}\n{grounding}\n\nAnalyze the text below and decide how many notes to create.\nSplit only when topics are clearly distinct and each part has enough substance.\nPrefer fewer, richer notes over many thin ones.\n\nTEXT:\n{text}\n\nEXISTING VAULT TAGS (reuse when relevant):\n{tags_hint}\n\nEXISTING VAULT NOTE TITLES (for wikilinks later):\n{titles_hint}\n\nRespond ONLY with a valid JSON array. No explanation, no markdown fences, no extra text before or after.\nEach object must have these fields: title (string), type (one of: conversation, meeting, project, braindump, todo, reference, journal, other), tags (array of strings), summary (string, 1-2 sentences), related_existing (array of existing note titles or empty array).",
+
+    "_plan_prompt_tip": "Placeholders: {instructions_block}, {grounding}, {text}, {tags_hint}, {titles_hint}. The {{ and }} in the example are escaped braces — they render as { and } to the model.",
+
+    "write_prompt": "You are writing a rich, meaningful Obsidian note.\n{instructions_block}\n{grounding}\n\nNote title: \"{title}\"\nNote type: {type}\nWhat this note covers: {summary}\n\nSOURCE TEXT:\n{text}\n\nOther notes in this same batch — link with [[wikilinks]] when relevant:\n{batch_links}\n\nExisting vault notes to link when truly relevant:\n{related_links}\n\nExisting vault tags to reuse:\n{tags_hint}\n\nWrite the full note body in Markdown. Requirements:\n- Start directly with content, no title heading\n- Use # headings to organize sections naturally\n- Be specific and detailed — no vague summaries, include real context\n- Use [[wikilinks]] to link to other notes in this batch or existing vault notes when it genuinely adds value\n- If there are tasks or follow-ups, use - [ ] checkbox format\n- Write in first person if it's a personal note\n- Minimum 200 words, aim for depth over brevity\n- Match the language of the source text\n- Do NOT invent information not present in the source text",
+
+    "_write_prompt_tip": "Placeholders: {instructions_block}, {grounding}, {title}, {type}, {summary}, {text}, {batch_links}, {related_links}, {tags_hint}."
+  }
+}
