@@ -77,7 +77,7 @@ Vaultmind is customizable via `config.py`.
 
 ## The Toolkit
 
-### ☀️ `morning_briefing.py`
+### ☀️ Morning Briefing (`morning_briefing.py`)
 
 The Daily Momentum Builder
 
@@ -90,7 +90,7 @@ python generate_insights.py
 
 ---
 
-### `generate_insights.py`
+### 📊 Weekly Insights (`generate_insights.py`)
 
 It uses a Parallel Processing model to run your notes through multiple "lenses" (like a Therapist or a Pattern Detector) simultaneously to save time.
 
@@ -103,7 +103,7 @@ python generate_insights.py
 
 ---
 
-### `study_recap.py`
+### 🧠 Study Recap (`study_recap.py`)
 
 This is an Interactive Tool designed to fight the "forgetting curve". Unlike the other scripts, this one waits for your input.
 
@@ -116,7 +116,7 @@ python study_recap.py
 
 ---
 
-### `txt_to_notes.py`
+### 📥 TXT to Notes (txt_to_notes.py`)
 
 This script handles the "messy" data—transcripts, braindumps, or long articles. It uses a Plan-then-Execute architecture to prevent the AI from getting lost in long texts.
 
