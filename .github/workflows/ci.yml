@@ -1,9 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: 
-        - main
   pull_request:
     branches: 
         - main
@@ -27,13 +24,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pyflakes
+          pip install requests ruff
 
-      - name: Check syntax (pyflakes)
-        run: |
-          pyflakes generate_insights.py
-          pyflakes morning_briefing.py
-          pyflakes study_recap.py
-          pyflakes txt_to_notes.py
-          pyflakes ai_backend.py
-          pyflakes config.py
+      - name: Check for bugs and style errors
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: "."
+
+      - name: Check for bad formatting
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: "."
+          args: "format --check"
+        
