@@ -37,9 +37,9 @@
 
     "_lens_prompt_tip": "Placeholders: {period}, {name}, {instruction}, {grounding}, {notes_block}.",
 
-    "synthesis_prompt": "You have analyzed someone's personal Obsidian notes from the past {period} through 5 different lenses:\n\n{combined}\n\n{grounding}\n\nNow write a final synthesis of 150-200 words covering:\n1. The single most important pattern or insight across all lenses\n2. One honest challenge or blind spot\n3. One concrete thing worth trying in the coming week\n\nBe direct, warm, and specific. Only reference things that were actually mentioned in the analyses above.",
+    "synthesis_prompt": "You have analyzed someone's personal Obsidian notes from the past {period} through 5 different lenses:\n\n{combined}\n\n{state_block}\n\n{grounding}\n\nWrite a final synthesis of 150-200 words covering:\n1. The single most important pattern or insight across all lenses\n2. One honest challenge or blind spot\n3. One concrete thing worth trying in the coming week\n\nBe direct, warm, and specific. Only reference things actually mentioned in the analyses above.\n\nThen append exactly this line:\n---STATE_UPDATE---\n\nThen write a compressed summary (max 400 words) of the long-term arc for this person, integrating the historical context with this week's new insights. This will be saved as memory for next week. Include: main topics being studied, long-term patterns, goals in progress, and notable evolution over time.",
 
-    "_synthesis_prompt_tip": "Placeholders: {period}, {combined}, {grounding}."
+    "_synthesis_prompt_tip": "Placeholders: {period}, {combined}, {grounding}, {state_block}. The ---STATE_UPDATE--- separator tells the script where to split the synthesis from the state update."
   },
 
 
