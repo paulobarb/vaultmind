@@ -81,7 +81,7 @@ def save_state(content: str):
     """
     INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(content, encoding="utf-8")
-    print(f"   AI_State.md updated")
+    print("   AI_State.md updated")
 
 
 def extract_state_from_synthesis(synthesis: str) -> tuple:
@@ -138,11 +138,6 @@ def collect_recent_notes(days: int) -> list[dict]:
                 notes.append({"file": path_obj.name, "content": content})
 
                 print(f"Trying to open: {path_obj}")
-
-                with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-
-                notes.append({"file": path_obj.name, "content": content})
 
         except OSError as e:
             print(f"Error accessing {path_obj}: {e}")
@@ -295,9 +290,9 @@ if __name__ == "__main__":
     # load historical state from previous runs
     state = load_state()
     if state:
-        print(f"   📚 Historical context loaded from AI_State.md\n")
+        print("   📚 Historical context loaded from AI_State.md\n")
     else:
-        print(f"   📚 No historical context yet — first run\n")
+        print("   📚 No historical context yet — first run\n")
 
     notes = collect_recent_notes(DAYS_BACK)
     if not notes:
