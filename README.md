@@ -1,288 +1,162 @@
-# vaultmind
+# Vaultmind
 
-Local AI toolkit for Obsidian. Runs 100% on your machine using [Ollama](https://ollama.com). No cloud, no API costs, no data leaving your computer.
+**Vaultmind** is a local AI tool for Obsidian. It transforms your static notes into an active knowledge base by generating automated insights, daily briefings, and study aids. All powered by [Ollama](https://ollama.com).
 
-**What it does:** reads your Obsidian vault and generates weekly insight reports, daily morning briefings, study recaps with review questions, and converts any text into structured Obsidian notes.
+[![vaultmind demo](https://img.youtube.com/vi/hqVmcqMPpUE/maxresdefault.jpg)](https://www.youtube.com/watch?v=hqVmcqMPpUE)
+---
+
+## Key Features
+
+- **Weekly/Monthly Insights:** Multi-lens analysis (Emotional, Productivity, Patterns) of your recent activity.
+- **Daily Morning Briefings:** Summarizes yesterday's progress and extracts pending tasks for today.
+- **Intelligent Study Recaps:** Automatically generates spaced-repetition questions and finds connections to older notes.
+- **Smart Ingestion:** A two-pass engine that converts raw text dumps and transcripts into structured, tagged Obsidian notes.
 
 ---
 
-## How it works
+## Hardware Requirements & Ollama models
 
-Every script follows the same flow:
+Vaultmind performance depends entirely on your local LLM runner (Ollama).
 
-1. Reads `.md` files from your Obsidian vault
-2. Builds a prompt and sends it to a local Ollama model
-3. Writes the output back into your vault as a new `.md` note with frontmatter
+> **Tip:** If you are unsure what your specific hardware can handle, check the [LLM Hardware Requirements Guide](https://onyx.app/llm-hardware-requirements) for a detailed breakdown of parameters vs. VRAM.
 
----
+While Ollama supports hundreds of models, Vaultmind has been specifically tested with the following:
 
-## Requirements
+* **DeepSeek-R1 (8B):** The recommended default. Superior for the `generate_insights.py` script due to its advanced reasoning and low hallucination rate.
+* **Llama 3.1 (8B):** Runs a little faster but with a little less accuracy.
+* **Llama 3.2 (3B):** Optimized (kinda) for edge devices and systems without dedicated GPUs.
 
-- [Ollama](https://ollama.com) installed and running
-- Python 3.10+
-- An Obsidian vault
+**Disclaimer:** Using models not listed above may result in unexpected output formats, conversational "chatter", or failure to parse the JSON planning phase in `txt_to_notes.py`.
 
 ---
 
 ## Installation
 
-**1. Clone the repo**
-```bash
-git clone https://github.com/yourusername/vaultmind.git
-cd vaultmind
-```
+### 1. Prerequisites
 
-**2. Create a virtual environment and install dependencies**
+- [Ollama](https://ollama.com) installed and running
+- Python 3.10 or higher
+
+### 2. Setup
+
 ```bash
+# Clone the repository
+git clone https://github.com/paulobarb/vaultmind.git
+cd vaultmind
+
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install requests
 ```
 
-**3. Pull a model**
+### 3. Initialize Model
 
-Vaultmind uses Ollama to run models locally. Pull one before running any script:
-```bash
-ollama pull llama3.1:8b
-```
-
-Recommended models:
-| Model | Size | Best for |
-|---|---|---|
-| `llama3.1:8b` | ~5GB | Best all-around quality |
-| `deepseek-r1:8b` | ~5GB | Less hallucination, better reasoning |
-| `llama3.2:3b` | ~2GB | Faster, lighter, good for older hardware |
-
-**4. Edit `config.py`**
-
-Open `config.py` and set your vault path and preferred model. Everything else has sensible defaults.
-
-```python
-OLLAMA_MODEL = "llama3.1:8b"   # must match what you pulled
-VAULT_PATH   = "~/Obsidian"    # path to your vault
-```
-
-See the [Configuration](#configuration) section for all options.
-
-**5. Start Ollama**
-```bash
-# basic
-ollama serve
-
-# with parallel requests enabled (recommended for generate_insights.py)
-OLLAMA_NUM_PARALLEL=5 ollama serve 2>/dev/null &
-```
-
----
-
-## Scripts
-
-### `generate_insights.py` — Weekly or monthly insight report
-
-Reads all notes modified in the last `DAYS_BACK` days and runs them through 5 analysis lenses in parallel, then writes a synthesis note.
-
-**Lenses:**
-- **Therapist** — emotional patterns, mood, stress signals
-- **Coach** — productivity, goals, tasks completed or stalled
-- **Pattern Detector** — recurring phrases, deferred intentions, cycles
-- **Strengths** — wins and growth you may have dismissed
-- **Connections** — links between seemingly unrelated notes
+Choose a model:
 
 ```bash
-python generate_insights.py
+ollama pull deepseek-r1:latest
 ```
-
-Output: `Vault/Insights/YYYY-MM-DD Week Insight.md`
-
-To switch to monthly: set `DAYS_BACK = 30` in `config.py`.
-
----
-
-### `morning_briefing.py` — Daily briefing
-
-Reads notes modified in the last 24 hours and generates a briefing with:
-- What you worked on yesterday
-- Pending and unfinished tasks found in your notes
-- Suggested focus for today
-- List of modified notes as wikilinks
-
-```bash
-python morning_briefing.py
-```
-
-Output: `Vault/Briefings/YYYY-MM-DD Morning Briefing.md`
-
-Best run automatically every morning via cron, see [Automation](#automation).
-
----
-
-### `study_recap.py` — Study session recap
-
-After a study session, generates a structured recap with key concepts and review questions for spaced repetition. Also finds connections to other notes in your vault.
-
-```bash
-python study_recap.py
-```
-
-The script auto-detects notes modified in the last `HOURS_BACK` hours and shows them for confirmation. You can add or remove notes before generating:
-
-```
-auto-detected notes (modified in last 4h):
-  1. CICD.md (14:32)
-  2. GitHub Actions.md (15:01)
-
-commands:
-  add filename.md  → add a note
-  rm <number>      → remove a note
-  done             → start generating
-
-> add BoxdMetrics.md
-> rm 2
-> done
-```
-
-Output: `Vault/Study Recaps/YYYY-MM-DD HH-MM Recap — NoteName.md`
-
----
-
-### `txt_to_notes.py` — Text to Obsidian notes
-
-Converts any text file into one or more structured Obsidian notes. Works with conversations, meeting notes, articles, braindumps — anything.
-
-```bash
-python txt_to_notes.py input.txt
-```
-
-**Two-pass process:**
-1. First pass analyzes the text and decides how many notes to create, planning titles and tags
-2. Second pass writes each note with full content, reusing your existing vault tags and creating wikilinks between notes and to existing vault notes
-
-**Optional instructions block** - add at the top of your `.txt` file to guide the output:
-```
----instructions---
-This is a technical conversation. Write in first person. Focus on what I built and learned.
----end---
-
-(your content here)
-```
-
-Output: `Vault/Captures/title/` all notes from the same dump go into one subfolder.
 
 ---
 
 ## Configuration
 
-All settings are in `config.py`. You only need to edit this file.
+Vaultmind is customizable via `config.py`.
 
-```python
-# Model
-OLLAMA_MODEL = "llama3.1:8b"        # model name
-TEMPERATURE  = 0.2                   # 0.0 = deterministic, 1.0 = creative. Keep low for factual output.
+| Setting | Description |
+| :--- | :--- |
+| `VAULT_PATH` | Absolute path to your Obsidian vault |
+| `NUM_CTX` | Context window size — increase for long notes, decrease if you encounter VRAM spillover |
+| `TEMPERATURE` | `0.2` for factual briefings, `0.7` for more creative insights |
+| `EXCLUDED_FOLDERS` | List of folders the AI should ignore (e.g. Templates, Archive) |
 
-# API
-OLLAMA_API_URL = "http://localhost:11434/api/generate"  # change if Ollama runs on a different host
-TIMEOUT        = 600                 # seconds to wait per request. Increase for slow hardware.
-KEEP_ALIVE     = "10m"              # how long model stays loaded after last request
-NUM_CTX        = 8192               # context window in tokens. Higher = more notes fit but uses more RAM.
+---
 
-# Vault
-VAULT_PATH     = "~/Obsidian"       # path to your vault
+## The Toolkit
 
-# Behaviour
-DAYS_BACK      = 7                  # generate_insights: 7 = weekly, 30 = monthly
-HOURS_BACK     = 4                  # study_recap: hours to look back for recent notes
-MAX_NOTE_CHARS = 2000               # characters read per note
-MAX_NOTES      = 200                # max notes indexed from vault
-TOP_N_NOTES    = 15                 # relevant notes injected per query
+### ☀️ `morning_briefing.py`
+
+The Daily Momentum Builder
+
+    It categorizes notes into "Yesterday" (execution) and "Today" (planning). It scans for unfinished tasks (empty checkboxes) and unresolved thoughts.
+
+    It provides a "Suggested Focus," acting as a bridge between the work you finished and the work you haven't started yet, ensuring you never wake up with a "cold start" in your vault.
+
+```bash
+python morning_briefing.py
 ```
 
 ---
 
-## Automation
+### `generate_insights.py`
 
-Run insights weekly and briefing daily using cron:
+It uses a Parallel Processing model to run your notes through multiple "lenses" (like a Therapist or a Pattern Detector) simultaneously to save time.
+
+    It reads a file called AI_State.md at startup. This file contains a compressed history of who you were last week.
+
+    The AI compares your current notes against that state to identify "drift"—checking if you are actually making progress on your goals or just repeating the same cycles. It then updates the state file, making the AI following your journey every time you run it.
 
 ```bash
-crontab -e
+python generate_insights.py
 ```
 
-```
-OLLAMA_NUM_PARALLEL=5
-PATH=/usr/local/bin:/usr/bin:/bin
+---
 
-# weekly insights — every sunday at 8am
+### `study_recap.py`
+
+This is an Interactive Tool designed to fight the "forgetting curve". Unlike the other scripts, this one waits for your input.
+
+    It auto-detects notes modified in a specific window (e.g., your last 24 hours of studying) and lets you manually refine the list. It then cross-references these with the rest of your vault to find "hidden connections."
+
+    The Result: It generates a dedicated recap note filled with Spaced Repetition questions. It transforms passive reading into active testing.
+
+```bash
+python study_recap.py
+```
+
+---
+
+### `txt_to_notes.py`
+
+This script handles the "messy" data—transcripts, braindumps, or long articles. It uses a Plan-then-Execute architecture to prevent the AI from getting lost in long texts.
+
+    Pass 1 (Planning): The AI reads the raw text and creates a JSON "blueprint." It decides how many notes are needed, what the titles should be, and which existing tags from your vault to reuse.
+
+    Pass 2 (Writing): Using that blueprint, it writes the actual content, automatically creating [[Wikilinks]] between the new notes and your existing knowledge base.
+
+```bash
+python txt_to_notes.py my_transcript.txt
+```
+
+---
+
+## Customization
+
+Edit `prompts.json` to change how the AI speaks or what it focuses on.
+
+---
+
+## Automation (Linux / macOS)
+
+Add scripts to your crontab to have briefings waiting every morning (only works if you have your machine 24/7 on):
+
+```bash
+# Run morning briefing at 7:00 AM daily
+0 7 * * * /path/to/vaultmind/venv/bin/python /path/to/vaultmind/morning_briefing.py
+
+# Run weekly insights every Sunday at 8:00 AM
 0 8 * * 0 /path/to/vaultmind/venv/bin/python /path/to/vaultmind/generate_insights.py
-
-# morning briefing — every day at 8am
-0 8 * * * /path/to/vaultmind/venv/bin/python /path/to/vaultmind/morning_briefing.py
 ```
-
-Replace `/path/to/vaultmind` with the actual path, e.g. `/home/paulo/vaultmind`.
 
 ---
 
-## GPU acceleration
+## Limitations & Accuracy
 
-Ollama uses your GPU automatically if available. To verify:
-```bash
-ollama ps
-# look for: PROCESSOR (100% CPU/GPU)
-```
-
-If it shows `100% CPU` and you have a GPU:
-
-**AMD (Linux):**
-```bash
-# Arch
-sudo pacman -S rocm-opencl-runtime rocm-hip-runtime
-
-# Ubuntu
-sudo apt install rocm-opencl-runtime
-```
-
-**NVIDIA:**
-```bash
-# install CUDA — then restart Ollama
-```
-
-With a GPU, generation time drops from ~3 min/call to ~20-30 sec/call.
-
----
-
-## A note on accuracy
-
-- All prompts use `temperature: 0.2` low randomness, more factual output
-- Every prompt includes: *"Only use information explicitly present in the notes. Do not infer or invent."*
-- The model can still hallucinate, especially on long or ambiguous notes
-- Treat insight reports as starting points for reflection, not as ground truth
-- Scripts work best when your notes and your questions are in the same language
-
----
-
-## Customizing prompts
-
-All prompts are stored in `prompts.json`. You can edit them without touching any Python code.
-
-- Change the insight lens instructions to focus on what matters to you
-- Add or remove sections from the morning briefing
-- Change the language or tone of any output
-- Add new lenses to `insights.lenses` the script picks them up automatically
-
----
-
-## Project structure
-
-```
-vaultmind/
-├── config.py              # all settings
-├── prompts.json           # all prompts
-├── ai_backend.py          # shared Ollama caller used by all scripts
-├── generate_insights.py   # weekly/monthly insight report
-├── morning_briefing.py    # daily morning briefing
-├── study_recap.py         # study session recap with review questions
-├── txt_to_notes.py        # converts any text into Obsidian notes
-└── README.md
-```
+- **Context Limits:** Very long notes may require increasing `NUM_CTX` in `config.py`.
+- **Local Speed:** Performance is tied to your hardware. Large-scale analysis is significantly faster with a dedicated GPU.
 
 ---
 
