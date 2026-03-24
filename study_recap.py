@@ -13,6 +13,7 @@ from pathlib import Path
 import sys
 import json
 import datetime
+import re
 
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
@@ -37,6 +38,18 @@ PURPLE = "\033[35m"
 GREEN  = "\033[32m"
 RED    = "\033[31m"
 YELLOW = "\033[33m"
+
+def format_obsidian_tag(text: str) -> str:
+    """
+    Limpa uma string para ser uma tag válida no Obsidian.
+    - Transforma em minúsculas
+    - Substitui espaços por hifens
+    - Remove tudo que não for letra, número, '-' ou '_'
+    """
+
+    text = text.lower().replace(" ", "-")
+
+    return re.sub(r'[^a-z0-9_-]', '', text)
 
 
 def fill_prompt(template: str, **kwargs) -> str:
@@ -204,7 +217,7 @@ def write_recap(content: str, note_names: list[str]) -> str:
     filepath   = RECAP_FOLDER / filename
 
     tags_lines = [
-        f"  - {Path(n).stem.lower().replace(' ', '-')}"
+        f"  - {format_obsidian_tag(Path(n).stem)}"
         for n in note_names[:5]
     ]
 
