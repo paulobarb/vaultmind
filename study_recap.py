@@ -129,6 +129,8 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
     print(f"  {DIM}rm <number>      → remove a note{R}")
     print(f"  {DIM}done             → start generating{R}\n")
 
+    vault_index = {path.name.lower(): path for path in VAULT_PATH.rglob("*.md")}
+
     while True:
         try:
             cmd = input(f"{CYAN}> {R}").strip()
@@ -138,22 +140,24 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
         if cmd.lower() in ("done", ""):
             break
         elif cmd.startswith("add "):
-            filename = cmd[4:].strip()
-            if not filename.endswith(".md"):
-                filename += ".md"
+            target_filename = cmd[4:].strip().lower()
+            if not target_filename.endswith(".md"):
+                target_filename += ".md"
 
-            matches = list(VAULT_PATH.rglob(filename))
-            if matches:
-                path_obj  = matches[0]
+            if target_filename in vault_index:
+                path_obj  = vault_index[target_filename]
+
+                real_filename = path_obj.name
+
                 mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
-                note  = {"name": filename, "path": path_obj, "mtime": mtime}
-                if filename not in [n["name"] for n in selected]:
+                note  = {"name": real_filename, "path": path_obj, "mtime": mtime}
+                if real_filename not in [n["name"] for n in selected]:
                     selected.append(note)
-                    print(f"  {GREEN}added: {filename}{R}")
+                    print(f"  {GREEN}added: {real_filename}{R}")
                 else:
                     print(f"  {DIM}already in list{R}")
             else:
-                print(f"  {RED}not found: {filename}{R}")
+                print(f"  {RED}not found: {target_filename}{R}")
         elif cmd.startswith("rm "):
             try:
                 idx     = int(cmd[3:].strip()) - 1
