@@ -12,7 +12,7 @@ import requests
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH
+from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH # noqa: E402
 
 # terminal colors
 R    = "\033[0m"
