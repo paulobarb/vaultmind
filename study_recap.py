@@ -40,13 +40,6 @@ RED    = "\033[31m"
 YELLOW = "\033[33m"
 
 def format_obsidian_tag(text: str) -> str:
-    """
-    Limpa uma string para ser uma tag válida no Obsidian.
-    - Transforma em minúsculas
-    - Substitui espaços por hifens
-    - Remove tudo que não for letra, número, '-' ou '_'
-    """
-
     text = text.lower().replace(" ", "-")
 
     return re.sub(r'[^a-z0-9_-]', '', text)

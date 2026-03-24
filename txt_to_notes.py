@@ -48,6 +48,9 @@ CYAN   = "\033[36m"
 GREEN  = "\033[32m"
 RED    = "\033[31m"
 
+def format_obsidian_tag(text: str) -> str:
+    text = text.lower().replace(" ", "-")
+    return re.sub(r'[^a-z0-9_-]', '', text)
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -104,7 +107,8 @@ def collect_vault_tags() -> list[str]:
                 tags.add(t.lower())
         except Exception:
             continue
-    return sorted(tags)
+    cleaned_tags = {format_obsidian_tag(t) for t in tags if format_obsidian_tag(t)}
+    return sorted(list(cleaned_tags))
 
 
 def collect_note_titles() -> list[str]:
@@ -184,7 +188,7 @@ def write_note_content(text, note_plan, all_titles_in_batch, instructions, exist
 def write_file(note_plan, body, folder_path, date_str) -> str:
     """Write a single note to disk with Obsidian frontmatter."""
     title      = note_plan.get("title", "Untitled")
-    tags = [t.replace(" ", "-").lower() for t in note_plan.get("tags", [])]
+    tags = [format_obsidian_tag(t) for t in note_plan.get("tags", [])]    
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
     filename   = f"{safe_title}.md"
 
