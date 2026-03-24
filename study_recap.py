@@ -207,18 +207,23 @@ def write_recap(content: str, note_names: list[str]) -> str:
     RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
 
     date_str  = datetime.datetime.now().strftime("%Y-%m-%d")
-    time_str  = datetime.datetime.now().strftime("%H-%M")
+    time_str  = datetime.datetime.now().strftime("%Hh%M")
 
-    base_name = Path(note_names[0]).stem if note_names else "Session"
-    if len(note_names) > 1:
-        base_name += f" +{len(note_names)-1} more"
+    stems = [Path(n).stem for n in note_names]
+    if len(stems) == 1:
+        subject = stems[0]
+    elif len(stems) == 2:
+        subject = f"{stems[0]} & {stems[1]}"
+    else:
+        subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
 
-    filename   = f"{date_str} {time_str} Recap - {base_name}.md"
+    filename   = f"{date_str} {time_str} Recap - {subject}.md"
+    filename = re.sub(r'[\\/*?:"<>|]', "", filename)
     filepath   = RECAP_FOLDER / filename
 
     tags_lines = [
-        f"  - {format_obsidian_tag(Path(n).stem)}"
-        for n in note_names[:5]
+        f"  - {format_obsidian_tag(s)}"
+        for s in stems[:5]
     ]
 
     fm_lines = (
