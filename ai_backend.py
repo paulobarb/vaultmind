@@ -5,12 +5,14 @@
 # All Ollama communication goes through this file.
 # =============================================================
 
-import os
+from pathlib import Path
 import sys
 import requests
 
-sys.path.insert(0, os.path.dirname(__file__))
-from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH # noqa: E402
 
 # terminal colors
 R    = "\033[0m"
@@ -53,8 +55,8 @@ def check_vault() -> bool:
     Returns:
         True if vault exists, False otherwise.
     """
-    vault = os.path.expanduser(VAULT_PATH)
-    if not os.path.isdir(vault):
+    vault = Path(VAULT_PATH).expanduser().resolve()
+    if not vault.is_dir():
         print(f"{RED}  Error: Vault not found at: {vault}{R}")
         print("     Update VAULT_PATH in config.py")
         return False

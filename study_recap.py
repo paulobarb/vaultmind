@@ -13,6 +13,7 @@ from pathlib import Path
 import sys
 import json
 import datetime
+import re
 
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
@@ -37,6 +38,11 @@ PURPLE = "\033[35m"
 GREEN  = "\033[32m"
 RED    = "\033[31m"
 YELLOW = "\033[33m"
+
+def format_obsidian_tag(text: str) -> str:
+    text = text.lower().replace(" ", "-")
+
+    return re.sub(r'[^a-z0-9_-]', '', text)
 
 
 def fill_prompt(template: str, **kwargs) -> str:
@@ -129,6 +135,8 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
     print(f"  {DIM}rm <number>      → remove a note{R}")
     print(f"  {DIM}done             → start generating{R}\n")
 
+    vault_index = {path.name.lower(): path for path in VAULT_PATH.rglob("*.md")}
+
     while True:
         try:
             cmd = input(f"{CYAN}> {R}").strip()
@@ -138,22 +146,24 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
         if cmd.lower() in ("done", ""):
             break
         elif cmd.startswith("add "):
-            filename = cmd[4:].strip()
-            if not filename.endswith(".md"):
-                filename += ".md"
+            target_filename = cmd[4:].strip().lower()
+            if not target_filename.endswith(".md"):
+                target_filename += ".md"
 
-            matches = list(VAULT_PATH.rglob(filename))
-            if matches:
-                path_obj  = matches[0]
+            if target_filename in vault_index:
+                path_obj  = vault_index[target_filename]
+
+                real_filename = path_obj.name
+
                 mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
-                note  = {"name": filename, "path": path_obj, "mtime": mtime}
-                if filename not in [n["name"] for n in selected]:
+                note  = {"name": real_filename, "path": path_obj, "mtime": mtime}
+                if real_filename not in [n["name"] for n in selected]:
                     selected.append(note)
-                    print(f"  {GREEN}added: {filename}{R}")
+                    print(f"  {GREEN}added: {real_filename}{R}")
                 else:
                     print(f"  {DIM}already in list{R}")
             else:
-                print(f"  {RED}not found: {filename}{R}")
+                print(f"  {RED}not found: {target_filename}{R}")
         elif cmd.startswith("rm "):
             try:
                 idx     = int(cmd[3:].strip()) - 1
@@ -190,18 +200,23 @@ def write_recap(content: str, note_names: list[str]) -> str:
     RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
 
     date_str  = datetime.datetime.now().strftime("%Y-%m-%d")
-    time_str  = datetime.datetime.now().strftime("%H-%M")
+    time_str  = datetime.datetime.now().strftime("%Hh%M")
 
-    base_name = Path(note_names[0]).stem if note_names else "Session"
-    if len(note_names) > 1:
-        base_name += f" +{len(note_names)-1} more"
+    stems = [Path(n).stem for n in note_names]
+    if len(stems) == 1:
+        subject = stems[0]
+    elif len(stems) == 2:
+        subject = f"{stems[0]} & {stems[1]}"
+    else:
+        subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
 
-    filename   = f"{date_str} {time_str} Recap - {base_name}.md"
+    filename   = f"{date_str} {time_str} Recap - {subject}.md"
+    filename = re.sub(r'[\\/*?:"<>|]', "", filename)
     filepath   = RECAP_FOLDER / filename
 
     tags_lines = [
-        f"  - {Path(n).stem.lower().replace(' ', '-')}"
-        for n in note_names[:5]
+        f"  - {format_obsidian_tag(s)}"
+        for s in stems[:5]
     ]
 
     fm_lines = (

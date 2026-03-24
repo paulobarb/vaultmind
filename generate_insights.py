@@ -51,8 +51,17 @@ def fill_prompt(template: str, **kwargs) -> str:
     return result
 
 def get_week_label() -> str:
-    """Return the current ISO week number as a string, e.g. 'Week 12'."""
-    return f"Week {datetime.datetime.now().isocalendar()[1]}"
+    """Return a human-readable week range and number, e.g. 'Mar 23 – Mar 29 (Week 13)'."""
+    now = datetime.datetime.now()
+    
+    start_of_week = now - datetime.timedelta(days=now.weekday())
+
+    end_of_week = start_of_week + datetime.timedelta(days=6)
+
+    range_str = f"{start_of_week.strftime('%b %d')} – {end_of_week.strftime('%b %d')}"
+    week_num = now.isocalendar()[1]
+    
+    return f"{range_str} (Week {week_num})"
 
 
 # --- PERSISTENT STATE ---
@@ -253,21 +262,33 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
     Write the final insight note to the Insights folder in the vault.
     Creates the folder if it doesn't exist.
     """
+    now = datetime.datetime.now()
     date_str     = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    is_month     = DAYS_BACK > 7
     period_label = "Week" if DAYS_BACK <= 7 else "Monthly"
-    week_label   = get_week_label()
     filename     = f"{date_str} {period_label} Insight.md"
+
+    if is_month:
+        time_property = "month: " + now.strftime("%B %Y")
+    else:
+        time_property = "week: " + get_week_label()
+    
 
     INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
     filepath = INSIGHT_FOLDER / filename
-
     tags = extract_tags(lens_results, synthesis)
 
-    fm_lines = (
-        ["---", "creation date: " + date_str, "tags:"]
-        + [f"  - {t}" for t in tags]
-        + ["week: " + week_label, "content: insights", "---", "", ""]
-    )
+    fm_lines = [
+        "---", 
+        f"creation date: + {date_str}",
+        "tags:"
+        ] + [f"  - {t}" for t in tags] + [
+            time_property, 
+            "content: insights", 
+            "---", 
+            "", ""
+        ]
 
     lines = ["## 🔮 Synthesis", "", synthesis, "", "---", ""]
     for r in lens_results:
