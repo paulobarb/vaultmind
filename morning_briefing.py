@@ -30,6 +30,8 @@ BRIEFING_FOLDER = VAULT_PATH / "Briefings"
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
+    
+TEMP_BRIEFING = TEMPERATURES.get("briefing")
 
 GROUNDING = PROMPTS["grounding"]
 

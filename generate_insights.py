@@ -17,6 +17,7 @@
 
 import sys
 import json
+import re
 import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -36,10 +37,14 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
+TEMP_INSIGHTS = TEMPERATURES.get("insights")
+
 GROUNDING = PROMPTS["grounding"]
 LENSES    = PROMPTS["insights"]["lenses"]
 
-TEMP_INSIGHTS = TEMPERATURES.get("insights")
+def format_obsidian_tag(text: str) -> str:
+    text = text.lower().replace(" ", "-")
+    return re.sub(r'[^a-z0-9_-]', '', text)
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -245,7 +250,13 @@ def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
         if any(kw in text for kw in keywords):
             base_tags.append(tag)
 
-    return base_tags[:6]
+    final_tags = []
+    for tag in base_tags:
+        cleaned = format_obsidian_tag(tag)
+        if cleaned:
+            final_tags.append(cleaned)
+
+    return final_tags[:6]
 
 
 # --- OUTPUT ---
@@ -273,7 +284,7 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
 
     fm_lines = [
         "---", 
-        f"creation date: + {date_str}",
+        f"creation date: {date_str}",
         "tags:"
         ] + [f"  - {t}" for t in tags] + [
             time_property, 

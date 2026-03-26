@@ -8,40 +8,28 @@ OLLAMA_MODEL = "llama3.1:8b"    # Ollama model to use
 #   - 0.4 to 0.7: Balanced, conversational (Good for general writing)
 #   - 0.8 to 1.0: Highly creative, unpredictable (Good for brainstorming)
 TEMPERATURES = {
-    # The global fallback used if a script doesn't have a specific setting.
-    "default":  0.2,  
+    "default":  0.2,  # The global fallback
     
     # Specific script overrides. 
-    # Replace 'None' with a float to override the default.
-    "insights": None, # generate_insights.py
-    "briefing": None, # morning_briefing.py
-    "recap":    None, # study_recap.py
-    "txt":      None, # txt_to_notes.py
+    # Replace 'None' with a float (0.0-1.0) to override.
+    "insights": None, 
+    "briefing": None, 
+    "recap":    None, 
+    "txt":      None, 
 }
-
-# -------------------------------------------------------------
-# API Configuration
-# -------------------------------------------------------------
-OLLAMA_API_URL = "http://localhost:11434/api/generate"  # Ollama API endpoint
-
-TIMEOUT        = 1000           # Max seconds to wait for a response per call.
-                                # Increase for slow hardware or large prompts. Default: 1000
-
-KEEP_ALIVE     = "10m"          # How long Ollama keeps the model loaded after last request.
-                                # Format: "5m", "1h", "0" (unload immediately). Default: "10m"
-
-NUM_CTX        = 8192           # Context window size in tokens.
-                                # Higher = more notes fit in prompt but uses more RAM.
-                                # Recommended: 4096 (fast) to 16384 (large vaults). Default: 8192
 
 # -------------------------------------------------------------
 # Vault Configuration
 # -------------------------------------------------------------
-VAULT_PATH = "~/Obsidian"       # Path to your Obsidian vault. Supports ~ for home directory.
+VAULT_PATH = "~/Obsidian"       # Path to your Obsidian vault.
 
 # -------------------------------------------------------------
 # Script Behaviour
 # -------------------------------------------------------------
+DAYS_BACK      = 7              
+HOURS_BACK     = 24             
+MAX_NOTE_CHARS = 2000           
+MAX_FILE_SIZE  = 1_000_000  
 DAYS_BACK      = 7              # generate_insights.py: how many days back to collect notes.
                                 # 7 = weekly report, 30 = monthly report.
 
@@ -63,6 +51,7 @@ EXCLUDED_FOLDERS = [
     # "Templates",
     # "Archive",
 ]
+
 
 #--------------------------------------------------------------
 # Tagging System (generate_insights.py)
@@ -94,3 +83,12 @@ RECAP_TITLE_FORMAT = "{date} ({time}) Study Recap — {subject}.md"
 
 # Placeholders: {title}
 TXT_TITLE_FORMAT = "{title}.md"
+
+
+# -------------------------------------------------------------
+# API Configuration
+# -------------------------------------------------------------
+OLLAMA_API_URL = "http://localhost:11434/api/generate"  
+TIMEOUT        = 1000           
+KEEP_ALIVE     = "10m"          
+NUM_CTX        = 8192           

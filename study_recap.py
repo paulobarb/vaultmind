@@ -28,6 +28,8 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
+TEMP_RECAP = TEMPERATURES.get("recap")
+
 GROUNDING = PROMPTS["grounding"]
 
 TEMP_RECAP = TEMPERATURES.get("recap")

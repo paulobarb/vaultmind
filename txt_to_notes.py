@@ -38,6 +38,9 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
+
+TEMP_TXT = TEMPERATURES.get("txt")
+
 GROUNDING = PROMPTS["grounding"]
 
 R      = "\033[0m"
@@ -47,8 +50,6 @@ PURPLE = "\033[35m"
 CYAN   = "\033[36m"
 GREEN  = "\033[32m"
 RED    = "\033[31m"
-
-TEMP_TXT = TEMPERATURES.get("txt")
 
 def format_obsidian_tag(text: str) -> str:
     text = text.lower().replace(" ", "-")
