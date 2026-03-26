@@ -12,7 +12,7 @@ import requests
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURE, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH # noqa: E402
+from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURES, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH # noqa: E402
 
 # terminal colors
 R    = "\033[0m"
@@ -50,7 +50,7 @@ def check_ollama() -> bool:
 def check_vault() -> bool:
     """
     Check if the configured vault path exists.
-    Prints a friendly error if not found.
+    Prints a error if not found.
 
     Returns:
         True if vault exists, False otherwise.
@@ -83,7 +83,7 @@ def get_backend() -> str:
     return "ollama"
 
 
-def call_ai(prompt: str, backend: str = "ollama", timeout: int = None) -> str:
+def call_ai(prompt: str, backend: str = "ollama", timeout: int = None, temperature: float = None) -> str:
     """
     Send a prompt to the configured AI backend and return the response text.
 
@@ -91,24 +91,28 @@ def call_ai(prompt: str, backend: str = "ollama", timeout: int = None) -> str:
         prompt:  The full prompt string to send to the model.
         backend: Which backend to use. Currently only 'ollama' is supported.
         timeout: Override the default timeout from config.py (in seconds).
+        temperature: Override the global temperature for this specific call.
 
     Returns:
         The model's response as a stripped string.
     """
-    return _call_ollama(prompt, timeout or TIMEOUT)
+    return _call_ollama(prompt, timeout or TIMEOUT, temperature)
 
 
-def _call_ollama(prompt: str, timeout: int) -> str:
+def _call_ollama(prompt: str, timeout: int, temperature: float = None) -> str:
     """
     Internal function that makes the actual HTTP request to the Ollama API.
-
-    Args:
-        prompt:  The prompt to send.
-        timeout: Max seconds to wait for a response.
-
-    Returns:
-        The model's response text, stripped of leading/trailing whitespace.
     """
+
+    global_temp = TEMPERATURES.get("default", 0.2)
+    raw_temp = temperature if temperature is not None else global_temp
+
+    try:
+        final_temp = max(0.0, min(1.0, float(raw_temp)))
+    except (ValueError, TypeError):
+        print(f"\n[WARNING] Invalid temperature '{raw_temp}' in config. Defaulting to 0.2")
+        final_temp = 0.2
+
     response = requests.post(
         OLLAMA_API_URL,
         json={
@@ -117,7 +121,7 @@ def _call_ollama(prompt: str, timeout: int) -> str:
             "stream":     False,
             "keep_alive": KEEP_ALIVE,
             "options": {
-                "temperature":    TEMPERATURE,
+                "temperature":    final_temp,
                 "top_p":          0.9,
                 "repeat_penalty": 1.1,
                 "num_ctx":        NUM_CTX,
