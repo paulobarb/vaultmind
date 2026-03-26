@@ -38,7 +38,7 @@ CANDIDATES = {
 }
 
 # -------------------------------------------------------------
-# API Configuration
+# API Configuration 
 # -------------------------------------------------------------
 OLLAMA_API_URL = "http://localhost:11434/api/generate"  
 TIMEOUT        = 1000           
