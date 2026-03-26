@@ -21,7 +21,7 @@ import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS
+from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
@@ -38,6 +38,8 @@ with PROMPTS_PATH.open(encoding="utf-8") as f:
 
 GROUNDING = PROMPTS["grounding"]
 LENSES    = PROMPTS["insights"]["lenses"]
+
+TEMP_INSIGHTS = TEMPERATURES.get("insights")
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -188,7 +190,7 @@ def run_lens(lens: dict, notes_block: str, period: str, backend: str) -> dict:
         notes_block=notes_block,
     )
     print(f"   Running lens: {lens['name']}...")
-    return {"name": lens["name"], "result": call_ai(prompt, backend)}
+    return {"name": lens["name"], "result": call_ai(prompt, backend, temperature=TEMP_INSIGHTS)}
 
 
 def run_synthesis(lens_results: list[dict], period: str, state: str, backend: str) -> tuple:
@@ -224,7 +226,7 @@ Use this context to identify long-term patterns and evolution over time.
     )
 
     print("   Running final synthesis...")
-    raw = call_ai(prompt, backend)
+    raw = call_ai(prompt, backend, temperature=TEMP_INSIGHTS)
     return extract_state_from_synthesis(raw)
 
 
@@ -238,17 +240,8 @@ def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
     base_tags = ["insights"]
     text = synthesis.lower() + " ".join(r["result"].lower() for r in lens_results)
 
-    candidates = {
-        "productivity":  ["productiv", "task", "goal", "work", "focus"],
-        "mood":          ["mood", "emotion", "feel", "stress", "anxiet", "happy"],
-        "philosophy":    ["meaning", "values", "purpose", "reflect", "life"],
-        "habits":        ["habit", "routine", "pattern", "repeat", "daily"],
-        "health":        ["health", "sleep", "exercise", "energy", "body"],
-        "projects":      ["project", "build", "code", "ship", "launch", "develop"],
-        "relationships": ["friend", "family", "partner", "social", "connect"],
-    }
 
-    for tag, keywords in candidates.items():
+    for tag, keywords in CANDIDATES.items():
         if any(kw in text for kw in keywords):
             base_tags.append(tag)
 
@@ -267,7 +260,7 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
 
     is_month     = DAYS_BACK > 7
     period_label = "Week" if DAYS_BACK <= 7 else "Monthly"
-    filename     = f"{date_str} {period_label} Insight.md"
+    filename     = INSIGHT_TITLE_FORMAT.format(date=date_str, period=period_label)
 
     if is_month:
         time_property = "month: " + now.strftime("%B %Y")

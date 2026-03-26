@@ -15,7 +15,7 @@ import json
 import datetime
 import re
 
-from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS
+from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
@@ -29,6 +29,8 @@ with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 GROUNDING = PROMPTS["grounding"]
+
+TEMP_RECAP = TEMPERATURES.get("recap")
 
 R      = "\033[0m"
 DIM    = "\033[2m"
@@ -98,14 +100,13 @@ def find_recent_notes(hours: int) -> list[dict]:
 def index_all_notes() -> dict[str, str]:
     """
     Build an index of all notes in the vault for connection finding.
-    Only reads the first 500 chars of each note to keep memory usage low.
     """
     notes = {}
     for path_obj in VAULT_PATH.rglob("*.md"):
         try:
             if path_obj.stat().st_size > MAX_FILE_SIZE:
                 continue
-            content = path_obj.read_text(encoding="utf-8", errors="ignore")[:500]
+            content = path_obj.read_text(encoding="utf-8", errors="ignore")[:2000]
             notes[path_obj.stem] = content
         except Exception:
             continue
@@ -192,7 +193,7 @@ def generate_recap(notes_data: list[dict], all_notes: dict, backend: str) -> str
         notes_block=notes_block,
         all_titles=all_titles,
     )
-    return call_ai(prompt, backend, timeout=600)
+    return call_ai(prompt, backend, temperature=TEMP_RECAP)
 
 
 def write_recap(content: str, note_names: list[str]) -> str:
@@ -210,8 +211,8 @@ def write_recap(content: str, note_names: list[str]) -> str:
     else:
         subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
 
-    filename   = f"{date_str} {time_str} Recap - {subject}.md"
-    filename = re.sub(r'[\\/*?:"<>|]', "", filename)
+    safe_subject = re.sub(r'[\\/*?:"<>|]', "", subject)
+    filename   = RECAP_TITLE_FORMAT.format(date=date_str, time=time_str, subject=safe_subject)
     filepath   = RECAP_FOLDER / filename
 
     tags_lines = [
