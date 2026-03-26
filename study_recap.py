@@ -32,6 +32,8 @@ TEMP_RECAP = TEMPERATURES.get("recap")
 
 GROUNDING = PROMPTS["grounding"]
 
+TEMP_RECAP = TEMPERATURES.get("recap")
+
 R      = "\033[0m"
 DIM    = "\033[2m"
 BOLD   = "\033[1m"
