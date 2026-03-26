@@ -267,7 +267,6 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
     else:
         time_property = "week: " + get_week_label()
     
-
     INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
     filepath = INSIGHT_FOLDER / filename
     tags = extract_tags(lens_results, synthesis)
