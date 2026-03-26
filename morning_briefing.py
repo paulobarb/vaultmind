@@ -16,7 +16,7 @@ import sys
 import json
 import datetime
 
-from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS
+from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
@@ -30,6 +30,8 @@ BRIEFING_FOLDER = VAULT_PATH / "Briefings"
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
+    
+TEMP_BRIEFING = TEMPERATURES.get("briefing")
 
 GROUNDING = PROMPTS["grounding"]
 
@@ -46,8 +48,6 @@ def fill_prompt(template: str, **kwargs) -> str:
 def collect_notes(days_back: float) -> list[dict]:
     """
     Collect notes modified within the last `days_back` days.
-    Skips Briefings and Insights folders to avoid feeding
-    generated content back into the briefing.
 
     Args:
         days_back: How many days back to look. Use 0 for today only,
@@ -129,13 +129,12 @@ def generate_briefing(yesterday_notes: list[dict], today_notes: list[dict], back
         today_block=today_block,
     )
 
-    return call_ai(prompt, backend)
+    return call_ai(prompt, backend, temperature=TEMP_BRIEFING)
 
 def write_briefing(content: str) -> str:
     """
     Write the briefing to the Briefings folder in the vault.
     Creates the folder if it doesn't exist.
-    Frontmatter is built line by line to avoid f-string issues.
 
     Args:
         content: The briefing Markdown content from generate_briefing().
@@ -146,7 +145,7 @@ def write_briefing(content: str) -> str:
     BRIEFING_FOLDER.mkdir(parents=True, exist_ok=True)
 
     date_str = datetime.datetime.now().strftime("%Y-%m-%d")
-    filename = f"{date_str} Morning Briefing.md"
+    filename = BRIEFING_TITLE_FORMAT.format(date=date_str)
     filepath = BRIEFING_FOLDER / filename
 
     fm_lines = [
@@ -186,7 +185,7 @@ def main():
     print(f"   found {total} note(s) modified in the last 24h\n")
 
     if not yesterday_notes and not today_notes:
-        print("   no recent notes found — briefing will be minimal\n")
+        print("   no recent notes found\n")
 
     print("   generating briefing...")
     content  = generate_briefing(yesterday_notes, today_notes, backend)

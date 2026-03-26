@@ -3,7 +3,7 @@
 # =============================================================
 # Converts any text file into one or more structured Obsidian
 # notes. Works with conversations, meeting notes, articles,
-# braindumps — anything you can paste into a .txt file.
+# anything you can paste into a .txt file.
 #
 # Two-pass process:
 #   Pass 1: AI reads the text and decides how many notes to create,
@@ -25,7 +25,7 @@ import re
 import datetime
 from pathlib import Path
 
-from config import MAX_FILE_SIZE, VAULT_PATH
+from config import MAX_FILE_SIZE, VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
@@ -38,6 +38,9 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
+
+TEMP_TXT = TEMPERATURES.get("txt")
+
 GROUNDING = PROMPTS["grounding"]
 
 R      = "\033[0m"
@@ -48,6 +51,9 @@ CYAN   = "\033[36m"
 GREEN  = "\033[32m"
 RED    = "\033[31m"
 
+def format_obsidian_tag(text: str) -> str:
+    text = text.lower().replace(" ", "-")
+    return re.sub(r'[^a-z0-9_-]', '', text)
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -104,7 +110,8 @@ def collect_vault_tags() -> list[str]:
                 tags.add(t.lower())
         except Exception:
             continue
-    return sorted(tags)
+    cleaned_tags = {format_obsidian_tag(t) for t in tags if format_obsidian_tag(t)}
+    return sorted(list(cleaned_tags))
 
 
 def collect_note_titles() -> list[str]:
@@ -143,7 +150,7 @@ def plan_notes(text, instructions, existing_tags, existing_titles, backend) -> l
         titles_hint=titles_hint,
     )
 
-    raw = call_ai(prompt, backend)
+    raw = call_ai(prompt, backend, temperature=TEMP_TXT)
     raw = re.sub(r"```(?:json)?", "", raw).strip()
 
     match = re.search(r"\[.*\]", raw, re.DOTALL)
@@ -178,15 +185,15 @@ def write_note_content(text, note_plan, all_titles_in_batch, instructions, exist
         related_links=related_links,
         tags_hint=tags_hint,
     )
-    return call_ai(prompt, backend, timeout=300)
+    return call_ai(prompt, backend, temperature=TEMP_TXT)
 
 
 def write_file(note_plan, body, folder_path, date_str) -> str:
     """Write a single note to disk with Obsidian frontmatter."""
     title      = note_plan.get("title", "Untitled")
-    tags = [t.replace(" ", "-").lower() for t in note_plan.get("tags", [])]
+    tags = [format_obsidian_tag(t) for t in note_plan.get("tags", [])]    
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
-    filename   = f"{safe_title}.md"
+    filename   = TXT_TITLE_FORMAT.format(title=safe_title)
 
     filepath   = Path(folder_path) / filename
 
