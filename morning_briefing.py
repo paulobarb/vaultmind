@@ -35,6 +35,8 @@ TEMP_BRIEFING = TEMPERATURES.get("briefing")
 
 GROUNDING = PROMPTS["grounding"]
 
+TEMP_BRIEFING = TEMPERATURES.get("briefing")
+
 def fill_prompt(template: str, **kwargs) -> str:
     """
     Safe placeholder replacement that won't crash on literal { } in the template.
