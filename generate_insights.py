@@ -23,7 +23,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+from ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -31,6 +31,9 @@ sys.path.insert(0, str(SCRIPT_DIR))
 VAULT_PATH     = Path(VAULT_PATH).expanduser().resolve()
 INSIGHT_FOLDER = VAULT_PATH / "Insights"
 STATE_FILE     = INSIGHT_FOLDER / "AI_State.md"
+
+# --- COLORS ---
+CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
 
 # load all prompts from the shared prompts.json file
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
@@ -47,93 +50,45 @@ def format_obsidian_tag(text: str) -> str:
     return re.sub(r'[^a-z0-9_-]', '', text)
 
 def fill_prompt(template: str, **kwargs) -> str:
-    """
-    Safe placeholder replacement that won't crash on literal { } in the template.
-    Uses simple string replacement instead of Python's .format() to avoid
-    KeyErrors when the prompt contains JSON examples with curly braces.
-    """
     result = template
     for key, value in kwargs.items():
         result = result.replace("{" + key + "}", str(value))
     return result
 
 def get_week_label() -> str:
-    """Return a human-readable week range and number, e.g. 'Mar 23 – Mar 29 (Week 13)'."""
     now = datetime.datetime.now()
-    
     start_of_week = now - datetime.timedelta(days=now.weekday())
-
     end_of_week = start_of_week + datetime.timedelta(days=6)
-
     range_str = f"{start_of_week.strftime('%b %d')} – {end_of_week.strftime('%b %d')}"
     week_num = now.isocalendar()[1]
-    
     return f"{range_str} (Week {week_num})"
 
 
 # --- PERSISTENT STATE ---
 
 def load_state() -> str:
-    """
-    Load AI_State.md which contains compressed historical context
-    from previous weeks. Returns empty string on first run.
-
-    Returns:
-        Historical context string or empty string.
-    """
     if STATE_FILE.exists():
         return STATE_FILE.read_text(encoding="utf-8").strip()
     return ""
 
-
 def save_state(content: str):
-    """
-    Save the updated compressed state back to AI_State.md.
-    This file grows smarter each week as the AI compresses
-    long-term patterns into it.
-
-    Args:
-        content: The new compressed state text from the AI.
-    """
     INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(content, encoding="utf-8")
-    print("   AI_State.md updated")
-
+    print(f"{DIM}│ State updated: AI_State.md{RESET}")
 
 def extract_state_from_synthesis(synthesis: str) -> tuple:
-    """
-    Extract the updated state block from the synthesis output.
-    The AI appends the state update after a separator line.
-
-    Args:
-        synthesis: Full synthesis text from the AI.
-
-    Returns:
-        Tuple of (clean_synthesis, new_state).
-    """
     separator = "---STATE_UPDATE---"
     if separator in synthesis:
         parts     = synthesis.split(separator, 1)
         clean     = parts[0].strip()
         new_state = parts[1].strip()
         return clean, new_state
-    # if model didn't follow format, use full synthesis as state
     return synthesis, synthesis
 
 
 # --- VAULT ---
 
 def collect_recent_notes(days: int) -> list[dict]:
-    """
-    Scan the vault for .md files modified within the last `days` days.
-    Uses pathlib for cross-platform compatibility (Windows + Unicode).
-
-    Args:
-        days: Number of days to look back from now.
-
-    Returns:
-        List of dicts with 'file' (filename) and 'content' (text) keys.
-    """
     cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
     notes  = []
 
@@ -153,19 +108,14 @@ def collect_recent_notes(days: int) -> list[dict]:
 
                 notes.append({"file": path_obj.name, "content": content})
 
-                print(f"Trying to open: {path_obj}")
-
         except OSError as e:
-            print(f"Error accessing {path_obj}: {e}")
+            # Only print actual errors, not every single file it tries to open
+            print(f"{YELLOW}│ Error reading {path_obj.name}: {e}{RESET}")
             continue
 
     return notes
 
 def build_notes_block(notes: list[dict]) -> str:
-    """
-    Format a list of notes into a single text block for the prompt.
-    Content is capped at MAX_NOTE_CHARS to keep prompts within context limits.
-    """
     return "\n\n---\n\n".join(
         f"### {n['file']}\n{n['content'][:MAX_NOTE_CHARS]}" for n in notes
     )
@@ -174,18 +124,6 @@ def build_notes_block(notes: list[dict]) -> str:
 # --- LENSES ---
 
 def run_lens(lens: dict, notes_block: str, period: str, backend: str) -> dict:
-    """
-    Run a single analysis lens against the notes block.
-
-    Args:
-        lens:        Lens dict with 'name' and 'instruction' from prompts.json.
-        notes_block: Formatted string of all notes to analyze.
-        period:      'week' or 'month'.
-        backend:     Which AI backend to use.
-
-    Returns:
-        Dict with 'name' and 'result' keys.
-    """
     prompt = fill_prompt(
         PROMPTS["insights"]["lens_prompt"],
         period=period,
@@ -194,24 +132,11 @@ def run_lens(lens: dict, notes_block: str, period: str, backend: str) -> dict:
         grounding=GROUNDING,
         notes_block=notes_block,
     )
-    print(f"   Running lens: {lens['name']}...")
+    print(f"{DIM}  │ Analyzing:{RESET} {lens['name']}")
     return {"name": lens["name"], "result": call_ai(prompt, backend, temperature=TEMP_INSIGHTS)}
 
 
 def run_synthesis(lens_results: list[dict], period: str, state: str, backend: str) -> tuple:
-    """
-    Combine all lens outputs into a final synthesis.
-    Also asks the AI to produce an updated compressed state for AI_State.md.
-
-    Args:
-        lens_results: List of lens output dicts.
-        period:       'week' or 'month'.
-        state:        Historical context from AI_State.md.
-        backend:      Which AI backend to use.
-
-    Returns:
-        Tuple of (clean_synthesis, new_state).
-    """
     combined = "\n\n".join(
         f"### {r['name']}\n{r['result']}" for r in lens_results
     )
@@ -230,7 +155,7 @@ Use this context to identify long-term patterns and evolution over time.
         state_block=state_block,
     )
 
-    print("   Running final synthesis...")
+    print(f"\n{DIM}• Generating final synthesis...{RESET}", end="\r")
     raw = call_ai(prompt, backend, temperature=TEMP_INSIGHTS)
     return extract_state_from_synthesis(raw)
 
@@ -238,13 +163,8 @@ Use this context to identify long-term patterns and evolution over time.
 # --- TAGS ---
 
 def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
-    """
-    Automatically detect relevant tags from the generated content.
-    Always includes 'insights' as a base tag.
-    """
     base_tags = ["insights"]
     text = synthesis.lower() + " ".join(r["result"].lower() for r in lens_results)
-
 
     for tag, keywords in CANDIDATES.items():
         if any(kw in text for kw in keywords):
@@ -262,10 +182,6 @@ def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
 # --- OUTPUT ---
 
 def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int):
-    """
-    Write the final insight note to the Insights folder in the vault.
-    Creates the folder if it doesn't exist.
-    """
     now = datetime.datetime.now()
     date_str     = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -298,7 +214,7 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
         lines += [f"## 🔍 {r['name']}", "", r["result"], ""]
 
     filepath.write_text("\n".join(fm_lines) + "\n".join(lines), encoding="utf-8")
-    print(f"\n✅ Insight saved: {filepath}")
+    return filepath
 
 
 # --- MAIN ---
@@ -308,22 +224,24 @@ if __name__ == "__main__":
     run_startup_checks()
     period  = "week" if DAYS_BACK <= 7 else "month"
 
-    print(f"\n📖 Collecting notes from the last {DAYS_BACK} days...")
-    print(f"   Backend: {backend_label(backend)}\n")
+    print(f"\n{CYAN}{BOLD}VAULT INSIGHTS{RESET}")
+    print(f"{DIM}Period:  Last {DAYS_BACK} days{RESET}\n")
 
-    # load historical state from previous runs
     state = load_state()
     if state:
-        print("   📚 Historical context loaded from AI_State.md\n")
+        print(f"{DIM}• Historical context loaded (AI_State.md){RESET}")
     else:
-        print("   📚 No historical context yet — first run\n")
+        print(f"{DIM}• No historical context (First run){RESET}")
 
+    print(f"{DIM}• Scanning vault for recent notes...{RESET}", end="\r")
     notes = collect_recent_notes(DAYS_BACK)
+    
     if not notes:
-        print("No recent notes found. Nothing to analyze.")
+        print(f"{YELLOW}• No recent notes found. Nothing to analyze.{RESET}\n")
         sys.exit(0)
 
-    print(f"   Found {len(notes)} notes. Running {len(LENSES)} lenses in parallel...\n")
+    print(f"{DIM}• Found {len(notes)} notes. Running {len(LENSES)} lenses in parallel...{' '*10}{RESET}")
+    
     notes_block  = build_notes_block(notes)
     lens_results = [None] * len(LENSES)
 
@@ -341,5 +259,9 @@ if __name__ == "__main__":
             lens_results[i] = result
 
     synthesis, new_state = run_synthesis(lens_results, period, state, backend)
+    print(" " * 50, end="\r")
+    
     save_state(new_state)
-    write_insight_note(lens_results, synthesis, len(notes))
+    filepath = write_insight_note(lens_results, synthesis, len(notes))
+    
+    print(f"{GREEN}│ Insight Saved:{RESET} {filepath.name}\n")

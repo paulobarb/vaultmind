@@ -17,7 +17,9 @@ import json
 import datetime
 
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+from ai_backend import get_backend, call_ai, run_startup_checks
+
+CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -34,8 +36,6 @@ with PROMPTS_PATH.open(encoding="utf-8") as f:
 TEMP_BRIEFING = TEMPERATURES.get("briefing")
 
 GROUNDING = PROMPTS["grounding"]
-
-TEMP_BRIEFING = TEMPERATURES.get("briefing")
 
 def fill_prompt(template: str, **kwargs) -> str:
     """
@@ -171,29 +171,28 @@ def main():
     backend = get_backend()
     run_startup_checks()
 
-    print("\n☀️  morning briefing")
-    print(f"   backend : {backend_label(backend)}")
-    print(f"   vault   : {VAULT_PATH}\n")
+    print(f"\n{CYAN}{BOLD}MORNING BRIEFING{RESET}")
+    print(f"{DIM}Vault:   {VAULT_PATH}{RESET}\n")
 
-    # collect notes from yesterday and today separately
-    # the prompt uses both blocks to give context about what changed
-    print("   collecting yesterday's notes...")
+    print(f"{DIM}• Collecting yesterday's notes...{RESET}", end="\r")
     yesterday_notes = collect_notes(days_back=1)
 
-    print("   collecting today's notes...")
+    print(f"{DIM}• Collecting today's notes...    {RESET}", end="\r")
     today_notes = collect_notes(days_back=0)
 
     total = len(yesterday_notes)
-    print(f"   found {total} note(s) modified in the last 24h\n")
+    
+    print(f"{DIM}• Found {total} note(s) modified in the last 24h{' '*10}{RESET}")
 
     if not yesterday_notes and not today_notes:
-        print("   no recent notes found\n")
+        print(f"\n{YELLOW}No recent notes found to brief you on.{RESET}\n")
 
-    print("   generating briefing...")
+    print(f"{DIM}• Generating briefing...{RESET}", end="\r")
     content  = generate_briefing(yesterday_notes, today_notes, backend)
     filepath = write_briefing(content)
 
-    print(f"\n✅ briefing saved: {filepath}\n")
+    print(" " * 50, end="\r")
+    print(f"{GREEN}│ Briefing Saved:{RESET} {filepath.name}\n")
 
 
 if __name__ == "__main__":
