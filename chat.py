@@ -18,10 +18,6 @@ import re
 import sqlite3
 import datetime
 from pathlib import Path
-
-SCRIPT_DIR = Path(__file__).parent
-sys.path.insert(0, str(SCRIPT_DIR))
-
 from config import (
     VAULT_PATH,
     EXCLUDED_FOLDERS,
@@ -32,6 +28,10 @@ from config import (
     HISTORY_LIMIT,
 )
 from ai_backend import call_ai, get_backend, run_startup_checks
+
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 
 # --- COLORS ---
 CYAN   = "\033[96m"
