@@ -8,11 +8,16 @@
 from pathlib import Path
 import sys
 import requests
+import time
+
+from config import (
+    OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURES, TIMEOUT, 
+    KEEP_ALIVE, NUM_CTX, VAULT_PATH, NVIDIA_MODEL, 
+    USE_NVIDIA_NIM, NVIDIA_API_KEY
+) # noqa: E402
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
-
-from config import OLLAMA_MODEL, OLLAMA_API_URL, TEMPERATURES, TIMEOUT, KEEP_ALIVE, NUM_CTX, VAULT_PATH # noqa: E402
 
 # terminal colors
 R    = "\033[0m"
@@ -77,11 +82,13 @@ def run_startup_checks() -> None:
 
 
 def get_backend() -> str:
-    """
-    Read the --api flag from command line arguments.
-    """
-    return "ollama"
+    return "nvidia" if USE_NVIDIA_NIM else "ollama"
 
+
+def backend_label(backend: str) -> str:
+    if backend == "ollama":
+        return f"NVIDIA NIM ({NVIDIA_MODEL})"
+    return f"Ollama ({OLLAMA_MODEL})"
 
 def call_ai(prompt: str, backend: str = "ollama", timeout: int = None, temperature: float = None) -> str:
     """
@@ -96,8 +103,52 @@ def call_ai(prompt: str, backend: str = "ollama", timeout: int = None, temperatu
     Returns:
         The model's response as a stripped string.
     """
-    return _call_ollama(prompt, timeout or TIMEOUT, temperature)
+    
+    if USE_NVIDIA_NIM:
+        return _call_nvidia(prompt, NVIDIA_API_KEY, temperature)
+    else:
+        return _call_ollama(prompt, timeout or TIMEOUT, temperature)
 
+def _call_nvidia(prompt: str, api_key: str, temperature: float = None) -> str:
+    url = "https://integrate.api.nvidia.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    global_temp = TEMPERATURES.get("default", 0.2)
+    raw_temp = temperature if temperature is not None else global_temp
+    final_temp = max(0.0, min(1.0, float(raw_temp or 0.2)))
+
+    payload = {
+
+        "model": NVIDIA_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": final_temp,
+        "top_p": 0.7,
+        "max_tokens": 4096,
+    } 
+    
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=300
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            return result["choices"][0]["message"]["content"].strip()
+
+        except requests.exceptions.RequestException as e:
+            print(f"\n\033[31m[NVIDIA API ERROR - attempt {attempt+1}/3] {e}\033[0m")
+
+            if attempt == 2:
+                raise
+
+            time.sleep(2 ** attempt)
 
 def _call_ollama(prompt: str, timeout: int, temperature: float = None) -> str:
     """
@@ -137,8 +188,3 @@ def _call_ollama(prompt: str, timeout: int, temperature: float = None) -> str:
         raise ValueError(f"Unexpected Ollama response format: {data}")
 
     return data["response"].strip()
-
-
-def backend_label(backend: str = "ollama") -> str:
-    """Return a human-readable label for the current backend."""
-    return f"Ollama ({OLLAMA_MODEL})"
