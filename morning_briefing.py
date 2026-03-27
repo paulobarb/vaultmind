@@ -8,14 +8,13 @@
 # Output: Vault/Briefings/YYYY-MM-DD Morning Briefing.md
 #
 # Schedule with cron to run automatically every morning:
-#   0 8 * * * /path/to/venv/bin/python /path/to/morning_briefing.py
+# 0 8 * * * /path/to/venv/bin/python /path/to/morning_briefing.py
 # =============================================================
 
 from pathlib import Path
 import sys
 import json
 import datetime
-
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, run_startup_checks
 
@@ -27,13 +26,12 @@ sys.path.insert(0, str(SCRIPT_DIR))
 VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
 BRIEFING_FOLDER = VAULT_PATH / "Briefings"
 
-
 # load prompts from prompts.json
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
     
-TEMP_BRIEFING = TEMPERATURES.get("briefing")
+TEMP_BRIEFING = TEMPERATURES.get("briefing") or TEMPERATURES.get("default") or 0.2
 
 GROUNDING = PROMPTS["grounding"]
 
