@@ -33,7 +33,8 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
-TEMP_RECAP = TEMPERATURES.get("recap", 0.5)
+TEMP_RECAP = TEMPERATURES.get("recap") or TEMPERATURES.get("default") or 0.2
+
 GROUNDING  = PROMPTS["grounding"]
 
 def format_obsidian_tag(text: str) -> str:

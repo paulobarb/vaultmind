@@ -12,7 +12,7 @@
 # Output: Vault/Insights/YYYY-MM-DD Week Insight.md
 #
 # Schedule with cron to run automatically:
-#   0 8 * * 0 /path/to/venv/bin/python /path/to/generate_insights.py
+# 0 8 * * 0 /path/to/venv/bin/python /path/to/generate_insights.py
 # =============================================================
 
 import sys
@@ -21,7 +21,6 @@ import re
 import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT
 from ai_backend import get_backend, call_ai, run_startup_checks
 
@@ -40,7 +39,7 @@ PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
-TEMP_INSIGHTS = TEMPERATURES.get("insights")
+TEMP_INSIGHTS = TEMPERATURES.get("insights") or TEMPERATURES.get("default") or 0.2
 
 GROUNDING = PROMPTS["grounding"]
 LENSES    = PROMPTS["insights"]["lenses"]
