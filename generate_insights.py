@@ -224,18 +224,15 @@ if __name__ == "__main__":
     run_startup_checks()
     period  = "week" if DAYS_BACK <= 7 else "month"
 
-    # Clean Header
     print(f"\n{CYAN}{BOLD}VAULT INSIGHTS{RESET}")
     print(f"{DIM}Period:  Last {DAYS_BACK} days{RESET}\n")
 
-    # State loading
     state = load_state()
     if state:
         print(f"{DIM}• Historical context loaded (AI_State.md){RESET}")
     else:
         print(f"{DIM}• No historical context (First run){RESET}")
 
-    # Note collection
     print(f"{DIM}• Scanning vault for recent notes...{RESET}", end="\r")
     notes = collect_recent_notes(DAYS_BACK)
     
@@ -243,7 +240,6 @@ if __name__ == "__main__":
         print(f"{YELLOW}• No recent notes found. Nothing to analyze.{RESET}\n")
         sys.exit(0)
 
-    # Overwrite scanning text with results
     print(f"{DIM}• Found {len(notes)} notes. Running {len(LENSES)} lenses in parallel...{' '*10}{RESET}")
     
     notes_block  = build_notes_block(notes)
@@ -262,12 +258,10 @@ if __name__ == "__main__":
             i, result = future.result()
             lens_results[i] = result
 
-    # Synthesis & Saving
     synthesis, new_state = run_synthesis(lens_results, period, state, backend)
-    print(" " * 50, end="\r") # Clear the synthesis loading line
+    print(" " * 50, end="\r")
     
     save_state(new_state)
     filepath = write_insight_note(lens_results, synthesis, len(notes))
     
-    # Final clean output
     print(f"{GREEN}│ Insight Saved:{RESET} {filepath.name}\n")

@@ -106,7 +106,8 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
             break
         elif cmd.startswith("add "):
             target_filename = cmd[4:].strip().lower()
-            if not target_filename.endswith(".md"): target_filename += ".md"
+            if not target_filename.endswith(".md"): 
+                target_filename += ".md"
             if target_filename in vault_index:
                 path_obj  = vault_index[target_filename]
                 real_filename = path_obj.name
@@ -151,9 +152,12 @@ def write_recap(content: str, note_names: list[str]) -> str:
     time_str  = datetime.datetime.now().strftime("%Hh%M")
     stems = [Path(n).stem for n in note_names]
     
-    if len(stems) == 1: subject = stems[0]
-    elif len(stems) == 2: subject = f"{stems[0]} & {stems[1]}"
-    else: subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
+    if len(stems) == 1: 
+        subject = stems[0]
+    elif len(stems) == 2: 
+        subject = f"{stems[0]} & {stems[1]}"
+    else: 
+        subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
 
     safe_subject = re.sub(r'[\\/*?:"<>|]', "", subject)
     filename   = RECAP_TITLE_FORMAT.format(date=date_str, time=time_str, subject=safe_subject)
@@ -172,7 +176,6 @@ def main():
     backend = get_backend()
     run_startup_checks()
 
-    # Clean Header
     print(f"\n{CYAN}{BOLD}STUDY RECAP{RESET}")
     print(f"{DIM}Vault:   {VAULT_PATH}{RESET}")
 
@@ -183,7 +186,6 @@ def main():
         print(f"\n{RED}No notes selected. Exiting.{RESET}\n")
         sys.exit(0)
 
-    # Status updates using \r to keep the terminal clean
     print(f"{DIM}• Loading selected note(s)...{' '*10}{RESET}", end="\r")
     notes_data = []
     for n in selected:
@@ -197,7 +199,6 @@ def main():
     content  = generate_recap(notes_data, all_notes, backend)
     filepath = write_recap(content, [n["name"] for n in selected])
 
-    # Final success message
     print(" " * 50, end="\r")
     print(f"{GREEN}│ Recap Saved:{RESET} {filepath.name}\n")
 

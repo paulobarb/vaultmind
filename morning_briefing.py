@@ -171,11 +171,9 @@ def main():
     backend = get_backend()
     run_startup_checks()
 
-    # Clean Header
     print(f"\n{CYAN}{BOLD}MORNING BRIEFING{RESET}")
     print(f"{DIM}Vault:   {VAULT_PATH}{RESET}\n")
 
-    # Dynamic status line (overwrites itself)
     print(f"{DIM}• Collecting yesterday's notes...{RESET}", end="\r")
     yesterday_notes = collect_notes(days_back=1)
 
@@ -184,18 +182,15 @@ def main():
 
     total = len(yesterday_notes)
     
-    # Overwrite with final count and lock it in with a newline
     print(f"{DIM}• Found {total} note(s) modified in the last 24h{' '*10}{RESET}")
 
     if not yesterday_notes and not today_notes:
         print(f"\n{YELLOW}No recent notes found to brief you on.{RESET}\n")
 
-    # Clean generation status
     print(f"{DIM}• Generating briefing...{RESET}", end="\r")
     content  = generate_briefing(yesterday_notes, today_notes, backend)
     filepath = write_briefing(content)
 
-    # Clear the generation line and print the sleek success message
     print(" " * 50, end="\r")
     print(f"{GREEN}│ Briefing Saved:{RESET} {filepath.name}\n")
 
