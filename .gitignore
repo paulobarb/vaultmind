@@ -2,3 +2,5 @@
 __pycache__/
 venv/
 yo.txt
+.ruff_cache
+.venv/

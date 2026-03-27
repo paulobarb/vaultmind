@@ -188,8 +188,3 @@ def _call_ollama(prompt: str, timeout: int, temperature: float = None) -> str:
         raise ValueError(f"Unexpected Ollama response format: {data}")
 
     return data["response"].strip()
-
-
-def backend_label(backend: str = "ollama") -> str:
-    """Return a human-readable label for the current backend."""
-    return f"Ollama ({OLLAMA_MODEL})"
