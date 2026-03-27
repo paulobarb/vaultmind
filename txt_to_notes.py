@@ -26,7 +26,7 @@ import datetime
 from pathlib import Path
 
 from config import MAX_FILE_SIZE, VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+from ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -232,7 +232,6 @@ def main():
 
     print(f"\n{BOLD}{PURPLE}  txt_to_notes{R}")
     print(f"{DIM}  source  : {source} ({len(text)} chars){R}")
-    print(f"{DIM}  backend : {backend_label(backend)}{R}")
     if instructions:
         print(f"{DIM}  instructions detected{R}")
     print()

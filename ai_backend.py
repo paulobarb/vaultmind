@@ -84,12 +84,6 @@ def run_startup_checks() -> None:
 def get_backend() -> str:
     return "nvidia" if USE_NVIDIA_NIM else "ollama"
 
-
-def backend_label(backend: str) -> str:
-    if backend == "ollama":
-        return f"NVIDIA NIM ({NVIDIA_MODEL})"
-    return f"Ollama ({OLLAMA_MODEL})"
-
 def call_ai(prompt: str, backend: str = "ollama", timeout: int = None, temperature: float = None) -> str:
     """
     Send a prompt to the configured AI backend and return the response text.

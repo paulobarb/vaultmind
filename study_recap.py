@@ -16,68 +16,41 @@ import datetime
 import re
 
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, backend_label, run_startup_checks
+from ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
+VAULT_PATH   = Path(VAULT_PATH).expanduser().resolve()
 RECAP_FOLDER = VAULT_PATH / "Study Recaps"
 
+# --- COLORS ---
+CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
+RED = "\033[31m"
+
+# load all prompts from the shared prompts.json file
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
-TEMP_RECAP = TEMPERATURES.get("recap")
-
-GROUNDING = PROMPTS["grounding"]
-
-TEMP_RECAP = TEMPERATURES.get("recap")
-
-R      = "\033[0m"
-DIM    = "\033[2m"
-BOLD   = "\033[1m"
-CYAN   = "\033[36m"
-PURPLE = "\033[35m"
-GREEN  = "\033[32m"
-RED    = "\033[31m"
-YELLOW = "\033[33m"
+TEMP_RECAP = TEMPERATURES.get("recap", 0.5)
+GROUNDING  = PROMPTS["grounding"]
 
 def format_obsidian_tag(text: str) -> str:
     text = text.lower().replace(" ", "-")
-
     return re.sub(r'[^a-z0-9_-]', '', text)
 
-
 def fill_prompt(template: str, **kwargs) -> str:
-    """
-    Safe placeholder replacement that won't crash on literal { } in the template.
-    Uses simple string replacement instead of Python's .format().
-    """
     result = template
     for key, value in kwargs.items():
         result = result.replace("{" + key + "}", str(value))
     return result
 
-
 def find_recent_notes(hours: int) -> list[dict]:
-    """
-    Find notes modified within the last `hours` hours.
-    Skips folders listed in EXCLUDED_FOLDERS from config.py.
-
-    Args:
-        hours: How many hours back to look.
-
-    Returns:
-        List of note dicts with 'name', 'path', and 'mtime' keys.
-    """
     cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
     found  = []
-
-    base_path = Path(VAULT_PATH).expanduser().resolve()
-
     all_files = sorted(
-        base_path.rglob("*.md"),
+        VAULT_PATH.rglob("*.md"),
         key=lambda p: p.stat().st_mtime if p.exists() else 0,
         reverse=True
     )
@@ -85,7 +58,6 @@ def find_recent_notes(hours: int) -> list[dict]:
     for path_obj in all_files:
         if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
             continue
-        
         try:
             mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
             if mtime >= cutoff:
@@ -96,13 +68,9 @@ def find_recent_notes(hours: int) -> list[dict]:
                 })
         except OSError:
             continue
-
     return found
 
 def index_all_notes() -> dict[str, str]:
-    """
-    Build an index of all notes in the vault for connection finding.
-    """
     notes = {}
     for path_obj in VAULT_PATH.rglob("*.md"):
         try:
@@ -114,35 +82,23 @@ def index_all_notes() -> dict[str, str]:
             continue
     return notes
 
-
 def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
-    """
-    Show auto-detected notes and let the user confirm, add, or remove them.
-
-    Commands:
-        add filename.md  — add a note
-        rm <number>      — remove a note
-        done             — proceed
-    """
-    print(f"\n{BOLD}auto-detected notes (modified in last {HOURS_BACK}h):{R}")
+    print(f"\n{BOLD}Auto-detected notes (last {HOURS_BACK}h):{RESET}")
     selected = list(auto_detected)
 
     if not selected:
-        print(f"  {DIM}none found{R}")
+        print(f"  {DIM}None found.{RESET}")
     else:
         for i, n in enumerate(selected):
-            print(f"  {GREEN}{i+1}.{R} {n['name']} {DIM}({n['mtime'].strftime('%H:%M')}){R}")
+            print(f"  {GREEN}{i+1}.{RESET} {n['name']} {DIM}({n['mtime'].strftime('%H:%M')}){RESET}")
 
-    print(f"\n{DIM}commands:{R}")
-    print(f"  {DIM}add filename.md  → add a note{R}")
-    print(f"  {DIM}rm <number>      → remove a note{R}")
-    print(f"  {DIM}done             → start generating{R}\n")
+    print(f"\n{DIM}Commands: add <file.md>, rm <number>, done{RESET}")
 
     vault_index = {path.name.lower(): path for path in VAULT_PATH.rglob("*.md")}
 
     while True:
         try:
-            cmd = input(f"{CYAN}> {R}").strip()
+            cmd = input(f"{CYAN}Select > {RESET}").strip()
         except (EOFError, KeyboardInterrupt):
             break
 
@@ -150,45 +106,37 @@ def select_notes_interactively(auto_detected: list[dict]) -> list[dict]:
             break
         elif cmd.startswith("add "):
             target_filename = cmd[4:].strip().lower()
-            if not target_filename.endswith(".md"):
-                target_filename += ".md"
-
+            if not target_filename.endswith(".md"): target_filename += ".md"
             if target_filename in vault_index:
                 path_obj  = vault_index[target_filename]
-
                 real_filename = path_obj.name
-
                 mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
-                note  = {"name": real_filename, "path": path_obj, "mtime": mtime}
                 if real_filename not in [n["name"] for n in selected]:
-                    selected.append(note)
-                    print(f"  {GREEN}added: {real_filename}{R}")
+                    selected.append({"name": real_filename, "path": path_obj, "mtime": mtime})
+                    print(f"  {GREEN}Added:{RESET} {real_filename}")
                 else:
-                    print(f"  {DIM}already in list{R}")
+                    print(f"  {DIM}Already in list.{RESET}")
             else:
-                print(f"  {RED}not found: {target_filename}{R}")
+                print(f"  {RED}Not found: {target_filename}{RESET}")
         elif cmd.startswith("rm "):
             try:
                 idx     = int(cmd[3:].strip()) - 1
                 removed = selected.pop(idx)
-                print(f"  {YELLOW}removed: {removed['name']}{R}")
+                print(f"  {YELLOW}Removed:{RESET} {removed['name']}")
                 for i, n in enumerate(selected):
-                    print(f"  {GREEN}{i+1}.{R} {n['name']}")
+                    print(f"  {GREEN}{i+1}.{RESET} {n['name']}")
             except (ValueError, IndexError):
-                print(f"  {RED}invalid number{R}")
+                print(f"  {RED}Invalid number.{RESET}")
         else:
-            print(f"  {DIM}unknown command. use add, rm or done{R}")
+            print(f"{DIM}Unknown command.{RESET}")
 
     return selected
 
-
 def generate_recap(notes_data: list[dict], all_notes: dict, backend: str) -> str:
-    """Send studied notes to AI and generate the recap."""
     notes_block = "\n\n---\n\n".join(
         f"### {n['name']}\n{n['content']}" for n in notes_data
     )
     all_titles = ", ".join(list(all_notes.keys())[:100])
-
     prompt = fill_prompt(
         PROMPTS["study_recap"]["prompt"],
         grounding=GROUNDING,
@@ -197,75 +145,61 @@ def generate_recap(notes_data: list[dict], all_notes: dict, backend: str) -> str
     )
     return call_ai(prompt, backend, temperature=TEMP_RECAP)
 
-
 def write_recap(content: str, note_names: list[str]) -> str:
-    """Write the recap note to the Study Recaps folder."""
     RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
-
     date_str  = datetime.datetime.now().strftime("%Y-%m-%d")
     time_str  = datetime.datetime.now().strftime("%Hh%M")
-
     stems = [Path(n).stem for n in note_names]
-    if len(stems) == 1:
-        subject = stems[0]
-    elif len(stems) == 2:
-        subject = f"{stems[0]} & {stems[1]}"
-    else:
-        subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
+    
+    if len(stems) == 1: subject = stems[0]
+    elif len(stems) == 2: subject = f"{stems[0]} & {stems[1]}"
+    else: subject = f"{stems[0]}, {stems[1]} (+{len(stems)-2})"
 
     safe_subject = re.sub(r'[\\/*?:"<>|]', "", subject)
     filename   = RECAP_TITLE_FORMAT.format(date=date_str, time=time_str, subject=safe_subject)
     filepath   = RECAP_FOLDER / filename
 
-    tags_lines = [
-        f"  - {format_obsidian_tag(s)}"
-        for s in stems[:5]
-    ]
-
+    tags_lines = [f"  - {format_obsidian_tag(s)}" for s in stems[:5]]
     fm_lines = (
-        ["---", "creation date: " + date_str, "tags:", "  - study-recap", "  - review"]
+        ["---", f"creation date: {date_str}", "tags:", "  - study-recap", "  - review"]
         + tags_lines
         + ["---", "", ""]
     )
-
     filepath.write_text("\n".join(fm_lines) + content, encoding="utf-8")
     return filepath
-
 
 def main():
     backend = get_backend()
     run_startup_checks()
 
-    print(f"\n{BOLD}{PURPLE}  study recap{R}{DIM}  spaced repetition generator{R}")
-    print(f"{DIM}  backend : {backend_label(backend)}{R}")
-    print(f"{DIM}  vault   : {VAULT_PATH}{R}")
+    # Clean Header
+    print(f"\n{CYAN}{BOLD}STUDY RECAP{RESET}")
+    print(f"{DIM}Vault:   {VAULT_PATH}{RESET}")
 
     auto_detected = find_recent_notes(HOURS_BACK)
     selected      = select_notes_interactively(auto_detected)
 
     if not selected:
-        print(f"\n{RED}  no notes selected. exiting.{R}\n")
+        print(f"\n{RED}No notes selected. Exiting.{RESET}\n")
         sys.exit(0)
 
-    print(f"\n{DIM}  loading {len(selected)} note(s)...{R}")
+    # Status updates using \r to keep the terminal clean
+    print(f"{DIM}• Loading selected note(s)...{' '*10}{RESET}", end="\r")
     notes_data = []
     for n in selected:
         content = n["path"].read_text(encoding="utf-8", errors="ignore")
+        notes_data.append({"name": n["name"], "content": content[:MAX_NOTE_CHARS]})
 
-        notes_data.append({
-            "name":    n["name"],
-            "content": content[:MAX_NOTE_CHARS],
-        })
-
-    print(f"{DIM}  indexing vault for connections...{R}")
+    print(f"{DIM}• Indexing vault for connections...{' '*10}{RESET}", end="\r")
     all_notes = index_all_notes()
 
-    print(f"{DIM}  generating recap...{R}\n")
+    print(f"{DIM}• Generating recap...{' '*20}{RESET}", end="\r")
     content  = generate_recap(notes_data, all_notes, backend)
     filepath = write_recap(content, [n["name"] for n in selected])
 
-    print(f"\n{GREEN}✅ recap saved: {filepath}{R}\n")
-
+    # Final success message
+    print(" " * 50, end="\r")
+    print(f"{GREEN}│ Recap Saved:{RESET} {filepath.name}\n")
 
 if __name__ == "__main__":
     main()
