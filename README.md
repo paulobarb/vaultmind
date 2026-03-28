@@ -2,7 +2,7 @@
 
 AI toolkit for Obsidian. Transforms your static notes into an active knowledge base with insights, briefings, study aids, vault chat, and automated organization. Runs locally with Ollama or via NVIDIA NIM for cloud speed.
 
-[![vaultmind demo](https://img.youtube.com/vi/hqVmcqMPpUE/maxresdefault.jpg)](https://www.youtube.com/watch?v=hqVmcqMPpUE)
+[![vaultmind demo](https://img.youtube.com/vi/7spFJPX8g24/maxresdefault.jpg)](https://www.youtube.com/watch?v=7spFJPX8g24)
 
 ---
 
