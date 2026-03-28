@@ -3,8 +3,8 @@
 # =============================================================
 
 # -- NVIDIA NIM --
-USE_NVIDIA_NIM = True # Change to True if you want to use NVIDIA NIM
-NVIDIA_API_KEY = "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" # Your API KEY here
+USE_NVIDIA_NIM = False # Change to True if you want to use NVIDIA NIM
+NVIDIA_API_KEY = "nvapi-xxxxxxxx" # Your API KEY here
 NVIDIA_MODEL   = "meta/llama-3.3-70b-instruct" # Chose your model
                 # meta/llama-3.3-70b-instruct was the only model tested
 
@@ -17,7 +17,7 @@ KEEP_ALIVE     = "10m"
 # Context Window
 # 8192 is safe for almost all local models (Gemma, Llama 3) and standard laptops.
 # You can use for example 32768 or 65536 for Llama 3.1, but requires 16GB+ of RAM.
-NUM_CTX        = 65536     
+NUM_CTX        = 8192     
 
 # -- Temperature Tuning --
 # 0.0-0.3: Rigid/Factual | 0.4-0.7: Balanced | 0.8-1.0: Creative
