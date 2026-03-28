@@ -24,9 +24,9 @@ import json
 import re
 import datetime
 from pathlib import Path
-
 from config import MAX_FILE_SIZE, VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT, CAPTURES_DIR_NAME
 from ai_backend import get_backend, call_ai, run_startup_checks
+from tagger_logic import collect_vault_tags, format_tag
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -84,36 +84,6 @@ def parse_input(raw: str) -> tuple[str, str]:
         return match.group(1).strip(), raw[match.end():].strip()
     return "", raw.strip()
 
-
-def collect_vault_tags() -> list[str]:
-    """
-    Scan all notes and collect existing tags from frontmatter and inline #hashtags.
-    Passed to the AI so it reuses existing tags instead of inventing new ones.
-    """
-    tags = set()
-
-    for path_obj in VAULT_PATH.rglob("*.md"):
-        try:
-            if path_obj.stat().st_size > MAX_FILE_SIZE:
-                continue
-            with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-
-            fm = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
-            if fm:
-                for line in fm.group(1).splitlines():
-                    m = re.match(r"\s*-\s*(.+)", line)
-                    if m:
-                        tags.add(m.group(1).strip().lower())
-
-            for t in re.findall(r"#([a-zA-Z][a-zA-Z0-9_/-]+)", content):
-                tags.add(t.lower())
-        except Exception:
-            continue
-    cleaned_tags = {format_obsidian_tag(t) for t in tags if format_obsidian_tag(t)}
-    return sorted(list(cleaned_tags))
-
-
 def collect_note_titles() -> list[str]:
     """
     Collect all note titles for wikilink generation.
@@ -165,7 +135,7 @@ def plan_notes(text, instructions, existing_tags, existing_titles, backend) -> l
 
 def write_note_content(text, note_plan, all_titles_in_batch, instructions, existing_tags, backend) -> str:
     """
-    Pass 2: Write the full content for a single note.
+    Write the full content for a single note.
     The model knows all other notes in this batch so it can cross-link between them.
     """
     tags_hint     = ", ".join(existing_tags[:40]) if existing_tags else "none yet"
@@ -191,7 +161,7 @@ def write_note_content(text, note_plan, all_titles_in_batch, instructions, exist
 def write_file(note_plan, body, folder_path, date_str) -> str:
     """Write a single note to disk with Obsidian frontmatter."""
     title      = note_plan.get("title", "Untitled")
-    tags = [format_obsidian_tag(t) for t in note_plan.get("tags", [])]    
+    tags = [format_tag(t) for t in note_plan.get("tags", [])]   
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)
     filename   = TXT_TITLE_FORMAT.format(title=safe_title)
 

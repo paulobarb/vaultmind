@@ -1,10 +1,14 @@
 # =============================================================
-# vaultmind — auto_tagger.py (V5 - Structural Scanner)
+# vaultmind — auto_tagger.py
+# =============================================================
+# Scans the vault for notes missing structural tags (no frontmatter, 
+# missing 'tags' key, or empty tags list) and automatically 
+# generates them using AI based on the note's content.
 # =============================================================
 
 import sys
 import re
-import yaml # We use this to properly read Obsidian properties
+import yaml
 from pathlib import Path
 
 # --- SETUP & PATHS ---
@@ -13,7 +17,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
     from config import VAULT_PATH, EXCLUDED_FOLDERS
-    from ai_backend import get_backend, call_ai, run_startup_checks
+    from ai_backend import get_backend, run_startup_checks
     from tagger_logic import collect_vault_tags, get_ai_tags
 except ImportError as e:
     print(f"\n\033[31m[!] IMPORT ERROR: {e}\033[0m"); sys.exit(1)
@@ -32,10 +36,9 @@ def has_no_tags(content: str) -> bool:
     """
     fm_match = re.match(r'^---(.*?)---', content, re.DOTALL)
     if not fm_match:
-        return True # No frontmatter at all
+        return True
         
     try:
-        # Parse the YAML safely
         data = yaml.safe_load(fm_match.group(1))
         if not data or 'tags' not in data:
             return True
@@ -49,7 +52,7 @@ def process_note(path: Path, existing_tags: list, backend: str):
     """Adds tags while preserving existing non-tag properties (word, link, etc)."""
     content = path.read_text(encoding="utf-8", errors="ignore")
     
-    # 1. Separate Frontmatter and Body
+    # Separate Frontmatter and Body
     fm_match = re.match(r'^---(.*?)---', content, re.DOTALL)
     if fm_match:
         try:
@@ -61,19 +64,18 @@ def process_note(path: Path, existing_tags: list, backend: str):
         metadata = {}
         body = content.strip()
 
-    # 2. Get AI Tags
+    # Get AI Tags
     print(f"    {DIM}· Consulting AI...{RESET}", end="\r")
     ai_suggestions = get_ai_tags(body, existing_tags, backend)
     
-    # 3. Filter out technical loop-terms
+    # Filter out technical loop-terms
     final_tags = [t for t in ai_suggestions if t.lower() != "untagged"]
     if not final_tags: final_tags = ["needs-review"]
 
-    # 4. Update Metadata
+    # Update Metadata
     metadata['tags'] = final_tags
     
-    # 5. Rebuild File
-    # We use yaml.dump to ensure properties like 'word' and 'link' stay safe
+    # Rebuild File
     new_fm = yaml.dump(metadata, sort_keys=False, allow_unicode=True).strip()
     new_content = f"---\n{new_fm}\n---\n\n{body}"
     

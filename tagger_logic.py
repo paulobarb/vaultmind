@@ -18,11 +18,10 @@ with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 
 def format_tag(text: str) -> str:
-    """Standardize tags: lowercase, no spaces, no junk prefixes."""
-    # Strip common AI 'chatter' prefixes
     text = re.sub(r'^(tags?:|here are.*?:|output:)\s*', '', text, flags=re.IGNORECASE)
+    
     text = text.lower().replace(" ", "-")
-    return re.sub(r'[^a-z0-9_-]', '', text)
+    return re.sub(r'[^\w-]', '', text)
 
 def collect_vault_tags() -> list[str]:
     """Scans the vault to find every tag you've already used."""
