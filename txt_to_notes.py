@@ -24,7 +24,7 @@ import json
 import re
 import datetime
 from pathlib import Path
-from config import MAX_FILE_SIZE, VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT, CAPTURES_DIR_NAME
+from config import VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT, CAPTURES_DIR_NAME
 from core.ai_backend import get_backend, call_ai, run_startup_checks
 from core.tagger_logic import collect_vault_tags, format_tag
 
