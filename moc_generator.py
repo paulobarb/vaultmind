@@ -11,7 +11,7 @@ import json
 import datetime
 from pathlib import Path
 from config import VAULT_PATH, EXCLUDED_FOLDERS, MOC_DIR_NAME, MOC_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, run_startup_checks
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
 # --- SETUP & PATHS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -36,7 +36,10 @@ MOC_FOLDER = VAULT / MOC_DIR_NAME
 def get_all_notes() -> list[Path]:
     notes = []
     for path in VAULT.rglob("*.md"):
-        if any(skip in str(path) for skip in EXCLUDED_FOLDERS) or MOC_DIR_NAME in str(path):
+        path_str = str(path)
+        if any(skip in path_str for skip in EXCLUDED_FOLDERS):
+            continue
+        if MOC_DIR_NAME in path.parts:
             continue
         notes.append(path)
     return notes
@@ -49,7 +52,7 @@ def find_by_tag(topic: str) -> list[dict]:
             content = path.read_text(encoding="utf-8", errors="ignore")
             if search_term in content.lower() or search_term in path.name.lower():
                 relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: 
+        except Exception:
             continue
     return relevant
 
@@ -82,7 +85,7 @@ def find_by_anchor(anchor_title: str) -> list[dict]:
 
             if is_incoming or is_outgoing:
                 relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: 
+        except Exception:
             continue
     return relevant
 
@@ -97,7 +100,7 @@ def find_by_folder(folder_rel_path: str) -> list[dict]:
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
             relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: 
+        except Exception:
             continue
     return relevant
 
@@ -107,7 +110,7 @@ def find_by_folder(folder_rel_path: str) -> list[dict]:
 
 def generate_moc_content(topic: str, context_type: str, notes: list, backend: str) -> str:
     notes_data = "\n".join([f"TITLE: {n['title']} | SNIPPET: {n['snippet']}" for n in notes])
-    
+
     if context_type == "anchor":
         context_prompt = "These notes are part of a localized graph cluster connected to the anchor note."
     elif context_type == "folder":
@@ -121,7 +124,7 @@ def generate_moc_content(topic: str, context_type: str, notes: list, backend: st
         context_prompt=context_prompt,
         notes_data=notes_data
     )
-    
+
     return call_ai(prompt, backend, temperature=0.1)
 
 # =============================================================
@@ -136,7 +139,7 @@ def main():
     print(f"{DIM}1. Search by Tag/Keyword (e.g., #productivity){RESET}")
     print(f"{DIM}2. Anchor Note Graph (e.g., Docker Overview){RESET}")
     print(f"{DIM}3. Folder Index (e.g., Projects/BoxdMetrics){RESET}")
-    
+
     choice = input(f"\n{YELLOW}Select strategy (1/2/3) > {RESET}").strip()
 
     if choice == '1':
@@ -158,7 +161,7 @@ def main():
         print(f"{DIM}• Reading contents of '{topic}/'...{RESET}", end="\r")
         notes = find_by_folder(topic)
         context_type = "folder"
-        filename_base = Path(topic).name 
+        filename_base = Path(topic).name
 
     else:
         print(f"{RED}Invalid choice.{RESET}")
@@ -170,24 +173,25 @@ def main():
 
     print(f"{DIM}• Organizing {len(notes)} notes into an MOC...{' '*15}{RESET}")
     moc_body = generate_moc_content(topic, context_type, notes, backend)
-    
+
     # --- FILENAME GENERATION ---
     MOC_FOLDER.mkdir(parents=True, exist_ok=True)
-    
+
     # Sanitize and format the title
     clean_title = re.sub(r'[\\/*?:"<>|]', "", filename_base).title()
     final_title = MOC_TITLE_FORMAT.format(title=clean_title)
-    filepath    = MOC_FOLDER / f"{final_title}.md"
-    
+    filepath = MOC_FOLDER / f"{final_title}.md"
+
     # --- SAVE ---
     now = datetime.datetime.now().strftime("%Y-%m-%d")
     frontmatter = f"---\ntags:\n  - moc\ncreated: {now}\n---\n\n# {final_title}\n\n"
-    
+
     filepath.write_text(frontmatter + moc_body, encoding="utf-8")
 
     print(f"{DIM}{'─'*45}{RESET}")
     print(f"{GREEN}│ Map Created: {final_title}.md{RESET}")
     print(f"{DIM}│ Check the '{MOC_DIR_NAME}' folder.{RESET}\n")
+
 
 if __name__ == "__main__":
     main()

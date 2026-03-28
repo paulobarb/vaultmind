@@ -27,10 +27,13 @@ from config import (
     SAVE_CHAT_HISTORY,
     HISTORY_LIMIT,
 )
-from ai_backend import call_ai, get_backend, run_startup_checks
+from core.ai_backend import call_ai, get_backend, run_startup_checks
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
+
+DATA_DIR = SCRIPT_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 CYAN   = "\033[96m"
 GREEN  = "\033[92m"
@@ -40,7 +43,7 @@ DIM    = "\033[2m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-DB_FILE = SCRIPT_DIR / "chat_history.db"
+DB_FILE = DATA_DIR / "chat_history.db"
 
 TEMP_CHAT = TEMPERATURES.get("chat") or TEMPERATURES.get("default") or 0.2
 

@@ -25,11 +25,10 @@ import re
 import datetime
 from pathlib import Path
 from config import VAULT_PATH, TEMPERATURES, TXT_TITLE_FORMAT, CAPTURES_DIR_NAME
-from ai_backend import get_backend, call_ai, run_startup_checks
-from tagger_logic import collect_vault_tags, format_tag
+from core.ai_backend import get_backend, call_ai, run_startup_checks
+from core.tagger_logic import collect_vault_tags, format_tag
 
 SCRIPT_DIR = Path(__file__).parent
-sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
 OUTPUT_BASE = CAPTURES_DIR_NAME
@@ -179,6 +178,8 @@ def write_file(note_plan, body, folder_path, date_str) -> str:
 
 
 def main():
+    sys.path.insert(0, str(SCRIPT_DIR))
+    
     backend = get_backend()
     run_startup_checks()
 
