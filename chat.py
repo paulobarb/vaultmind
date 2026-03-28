@@ -32,8 +32,6 @@ from ai_backend import call_ai, get_backend, run_startup_checks
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-
-# --- COLORS ---
 CYAN   = "\033[96m"
 GREEN  = "\033[92m"
 YELLOW = "\033[93m"
@@ -151,11 +149,9 @@ def retrieve_context(query: str, all_paths: list[Path], backend: str) -> tuple:
     Returns:
         Tuple of (context_blocks, matched_filenames)
     """
-    # step 1: keyword force — catch exact filename matches
     query_words = [w for w in re.findall(r'\w+', query.lower()) if len(w) > 3]
     forced = [p for p in all_paths if any(w in p.name.lower() for w in query_words)]
 
-    # step 2: librarian — ask AI to rank all files
     print(f"{DIM}  ranking files...{RESET}", end="\r")
     file_list = "\n".join(p.name for p in all_paths)
     librarian_prompt = (
@@ -166,7 +162,6 @@ def retrieve_context(query: str, all_paths: list[Path], backend: str) -> tuple:
     raw = call_ai(librarian_prompt, backend, temperature=0.0)
     suggested = [clean_filename(line) for line in raw.splitlines() if line.strip()]
 
-    # step 3: read content of matched files
     context_blocks, matched_names = [], []
     seen = set()
 

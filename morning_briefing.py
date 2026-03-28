@@ -15,7 +15,7 @@ from pathlib import Path
 import sys
 import json
 import datetime
-from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT
+from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT, BRIEFING_DIR_NAME
 from ai_backend import get_backend, call_ai, run_startup_checks
 
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
@@ -24,7 +24,8 @@ SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH  = Path(VAULT_PATH).expanduser().resolve()
-BRIEFING_FOLDER = VAULT_PATH / "Briefings"
+BRIEFING_FOLDER = VAULT_PATH / BRIEFING_DIR_NAME
+BRIEFING_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # load prompts from prompts.json
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
