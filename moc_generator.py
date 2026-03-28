@@ -137,8 +137,8 @@ def main():
 
     print(f"\n{CYAN}{BOLD}VAULT MOC ARCHITECT{RESET}")
     print(f"{DIM}1. Search by Tag/Keyword (e.g., #productivity){RESET}")
-    print(f"{DIM}2. Anchor Note Graph (e.g., Docker Overview){RESET}")
-    print(f"{DIM}3. Folder Index (e.g., Projects/BoxdMetrics){RESET}")
+    print(f"{DIM}2. Anchor Note Graph (e.g., MyNote){RESET}")
+    print(f"{DIM}3. Folder Index (e.g., Projects/MyProject){RESET}")
     
     choice = input(f"\n{YELLOW}Select strategy (1/2/3) > {RESET}").strip()
 

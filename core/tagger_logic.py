@@ -11,9 +11,7 @@ from pathlib import Path
 from config import MAX_FILE_SIZE, VAULT_PATH
 from core.ai_backend import call_ai
 
-SCRIPT_DIR = Path(__file__).parent.resolve()
-
-PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
+PROMPTS_PATH = Path(__file__).parent.parent / "prompts.json"
 with PROMPTS_PATH.open(encoding="utf-8") as f:
     PROMPTS = json.load(f)
 

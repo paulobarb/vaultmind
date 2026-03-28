@@ -16,7 +16,7 @@ from core.tagger_logic import collect_vault_tags, get_ai_tags
 
 # --- SETUP & PATHS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
-sys.path.insert(0, str(SCRIPT_DIR.path))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 # --- COLORS ---
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
