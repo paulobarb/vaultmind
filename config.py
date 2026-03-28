@@ -4,7 +4,7 @@
 
 # -- NVIDIA NIM --
 USE_NVIDIA_NIM = False # Change to True if you want to use NVIDIA NIM
-NVIDIA_API_KEY = "nvapi-xxxxxxxx" # Your API KEY here
+NVIDIA_API_KEY = "nvapi-xxxxxxx" # Your API KEY here
 NVIDIA_MODEL   = "meta/llama-3.3-70b-instruct" # Chose your model
                 # meta/llama-3.3-70b-instruct was the only model tested
 
