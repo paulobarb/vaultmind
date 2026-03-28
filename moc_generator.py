@@ -10,18 +10,12 @@ import re
 import json
 import datetime
 from pathlib import Path
+from config import VAULT_PATH, EXCLUDED_FOLDERS, MOC_DIR_NAME, MOC_TITLE_FORMAT
+from ai_backend import get_backend, call_ai, run_startup_checks
 
 # --- SETUP & PATHS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
-
-# --- IMPORT CONFIG & AI ---
-try:
-    # Now importing MOC_TITLE_FORMAT from config
-    from config import VAULT_PATH, EXCLUDED_FOLDERS, MOC_DIR_NAME, MOC_TITLE_FORMAT
-    from ai_backend import get_backend, call_ai, run_startup_checks
-except ImportError as e:
-    print(f"\n\033[31m[!] IMPORT ERROR: {e}\033[0m"); sys.exit(1)
 
 # --- LOAD PROMPTS ---
 PROMPTS_PATH = SCRIPT_DIR / "prompts.json"
@@ -55,7 +49,8 @@ def find_by_tag(topic: str) -> list[dict]:
             content = path.read_text(encoding="utf-8", errors="ignore")
             if search_term in content.lower() or search_term in path.name.lower():
                 relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: continue
+        except Exception: 
+            continue
     return relevant
 
 def find_by_anchor(anchor_title: str) -> list[dict]:
@@ -87,7 +82,8 @@ def find_by_anchor(anchor_title: str) -> list[dict]:
 
             if is_incoming or is_outgoing:
                 relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: continue
+        except Exception: 
+            continue
     return relevant
 
 def find_by_folder(folder_rel_path: str) -> list[dict]:
@@ -101,7 +97,8 @@ def find_by_folder(folder_rel_path: str) -> list[dict]:
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
             relevant.append({"title": path.stem, "snippet": content[:400]})
-        except Exception: continue
+        except Exception: 
+            continue
     return relevant
 
 # =============================================================
@@ -164,10 +161,12 @@ def main():
         filename_base = Path(topic).name 
 
     else:
-        print(f"{RED}Invalid choice.{RESET}"); sys.exit(1)
+        print(f"{RED}Invalid choice.{RESET}")
+        sys.exit(1)
 
     if not notes:
-        print(f"\n{RED}No notes found for this query.{RESET}\n"); return
+        print(f"\n{RED}No notes found for this query.{RESET}\n")
+        return
 
     print(f"{DIM}• Organizing {len(notes)} notes into an MOC...{' '*15}{RESET}")
     moc_body = generate_moc_content(topic, context_type, notes, backend)

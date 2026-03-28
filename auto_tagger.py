@@ -10,17 +10,13 @@ import sys
 import re
 import yaml
 from pathlib import Path
+from config import VAULT_PATH, EXCLUDED_FOLDERS
+from core.ai_backend import get_backend, run_startup_checks
+from core.tagger_logic import collect_vault_tags, get_ai_tags
 
 # --- SETUP & PATHS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
-
-try:
-    from config import VAULT_PATH, EXCLUDED_FOLDERS
-    from ai_backend import get_backend, run_startup_checks
-    from tagger_logic import collect_vault_tags, get_ai_tags
-except ImportError as e:
-    print(f"\n\033[31m[!] IMPORT ERROR: {e}\033[0m"); sys.exit(1)
 
 # --- COLORS ---
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
@@ -57,7 +53,7 @@ def process_note(path: Path, existing_tags: list, backend: str):
     if fm_match:
         try:
             metadata = yaml.safe_load(fm_match.group(1)) or {}
-        except:
+        except Exception: # <-- FIXED: E722 No bare 'except'
             metadata = {}
         body = content[fm_match.end():].strip()
     else:
@@ -70,7 +66,8 @@ def process_note(path: Path, existing_tags: list, backend: str):
     
     # Filter out technical loop-terms
     final_tags = [t for t in ai_suggestions if t.lower() != "untagged"]
-    if not final_tags: final_tags = ["needs-review"]
+    if not final_tags: 
+        final_tags = ["needs-review"]
 
     # Update Metadata
     metadata['tags'] = final_tags
@@ -97,14 +94,16 @@ def main():
     if choice == '1':
         targets = []
         for p in vault.rglob("*.md"):
-            if any(skip in str(p) for skip in EXCLUDED_FOLDERS): continue
+            if any(skip in str(p) for skip in EXCLUDED_FOLDERS): 
+                continue
             content = p.read_text(encoding="utf-8", errors="ignore")
             
             if has_no_tags(content):
                 targets.append(p)
 
         if not targets:
-            print(f"{GREEN}All notes are properly tagged!{RESET}\n"); return
+            print(f"{GREEN}All notes are properly tagged!{RESET}\n")
+            return # <-- FIXED: E702 Split semicolon into two lines
 
         print(f"{DIM}• Found {len(targets)} note(s) missing tags. Processing...{RESET}")
         for i, path in enumerate(targets):
