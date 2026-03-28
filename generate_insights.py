@@ -21,14 +21,15 @@ import re
 import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, run_startup_checks
+from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT, INSIGHTS_DIR_NAME
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH     = Path(VAULT_PATH).expanduser().resolve()
-INSIGHT_FOLDER = VAULT_PATH / "Insights"
+INSIGHT_FOLDER = VAULT_PATH / INSIGHTS_DIR_NAME
+INSIGHT_FOLDER.mkdir(parents=True, exist_ok=True)
 STATE_FILE     = INSIGHT_FOLDER / "AI_State.md"
 
 # --- COLORS ---
@@ -92,14 +93,16 @@ def collect_recent_notes(days: int) -> list[dict]:
     notes  = []
 
     for path_obj in VAULT_PATH.rglob("*.md"):
-        if any(folder in str(path_obj) for folder in EXCLUDED_FOLDERS):
+        path_str = str(path_obj)
+        if any(folder in path_str for folder in EXCLUDED_FOLDERS):
             continue
 
         try:
-            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            stat = path_obj.stat()
+            mtime = datetime.datetime.fromtimestamp(stat.st_mtime)
 
             if mtime >= cutoff:
-                if path_obj.stat().st_size > MAX_FILE_SIZE:
+                if stat.st_size > MAX_FILE_SIZE:
                     continue
 
                 with path_obj.open("r", encoding="utf-8", errors="ignore") as f:
@@ -108,7 +111,6 @@ def collect_recent_notes(days: int) -> list[dict]:
                 notes.append({"file": path_obj.name, "content": content})
 
         except OSError as e:
-            # Only print actual errors, not every single file it tries to open
             print(f"{YELLOW}│ Error reading {path_obj.name}: {e}{RESET}")
             continue
 
@@ -182,7 +184,7 @@ def extract_tags(lens_results: list[dict], synthesis: str) -> list[str]:
 
 def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int):
     now = datetime.datetime.now()
-    date_str     = datetime.datetime.now().strftime("%Y-%m-%d")
+    date_str = now.strftime("%Y-%m-%d")
 
     is_month     = DAYS_BACK > 7
     period_label = "Week" if DAYS_BACK <= 7 else "Monthly"
@@ -201,12 +203,12 @@ def write_insight_note(lens_results: list[dict], synthesis: str, note_count: int
         "---", 
         f"creation date: {date_str}",
         "tags:"
-        ] + [f"  - {t}" for t in tags] + [
-            time_property, 
-            "content: insights", 
-            "---", 
-            "", ""
-        ]
+    ] + [f"  - {t}" for t in tags] + [
+        time_property, 
+        "content: insights", 
+        "---", 
+        "", ""
+    ]
 
     lines = ["## 🔮 Synthesis", "", synthesis, "", "---", ""]
     for r in lens_results:
@@ -248,7 +250,7 @@ if __name__ == "__main__":
         i, lens = args
         return i, run_lens(lens, notes_block, period, backend)
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=min(5, len(LENSES))) as executor:
         futures = {
             executor.submit(run_lens_indexed, (i, lens)): i
             for i, lens in enumerate(LENSES)

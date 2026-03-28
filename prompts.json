@@ -71,5 +71,16 @@
     "write_prompt": "You are writing a rich, meaningful Obsidian note.\n{instructions_block}\n{grounding}\n\nNote title: \"{title}\"\nNote type: {type}\nWhat this note covers: {summary}\n\nSOURCE TEXT:\n{text}\n\nOther notes in this same batch — link with [[wikilinks]] when relevant:\n{batch_links}\n\nExisting vault notes to link when truly relevant:\n{related_links}\n\nExisting vault tags to reuse:\n{tags_hint}\n\nWrite the full note body in Markdown. Requirements:\n- Start directly with content, no title heading\n- Use # headings to organize sections naturally\n- Be specific and detailed — no vague summaries, include real context\n- Use [[wikilinks]] to link to other notes in this batch or existing vault notes when it genuinely adds value\n- If there are tasks or follow-ups, use - [ ] checkbox format\n- Write in first person if it's a personal note\n- Minimum 200 words, aim for depth over brevity\n- Match the language of the source text\n- Do NOT invent information not present in the source text",
 
     "_write_prompt_tip": "Placeholders: {instructions_block}, {grounding}, {title}, {type}, {summary}, {text}, {batch_links}, {related_links}, {tags_hint}."
+  },
+  
+  "moc_generator": {
+    "_info": "Used by moc_generator.py. Creates structured Maps of Content from tags, folders, or anchor notes.",
+    "prompt": "MOC FOCUS: {topic}\nCONTEXT: {context_prompt}\n\nVAULT NOTES (DO NOT ALTER THESE TITLES):\n{notes_data}\n\nTASK: Create a Map of Content (MOC).\n1. Group the notes into logical categories using ## headers.\n2. STRICT FORMATTING: List notes as standard bullet points (e.g., - [[Exact Title]]). DO NOT use headers like ### for the individual note links.\n3. EXACT MATCH RULE: You MUST copy the exact string provided in the 'TITLE:' field wrapped in brackets. Do NOT shorten, guess, or summarize titles. If the title is 'Terraform Introductions', you must write [[Terraform Introductions]], NOT [[Terraform]].\n4. Add a brief 1-sentence description after each bullet point.\n5. Write a brief 'Overview' at the top.",
+    "_moc_generator_tip": "Placeholders: {topic}, {context_prompt}, {notes_data}. Recommended Temperature: 0.1 for high accuracy with note titles."
+  },
+
+  "auto_tagger": {
+    "prompt": "CONTENT:\n{content}\n\nEXISTING VAULT TAGS:\n{tags_hint}\n\nTASK:\nIdentify the 3-4 best tags for this note based on the content. Use existing tags if they are relevant, otherwise create new ones. \n\nRETURN ONLY the tags separated by commas. Do not write sentences or explanations. Output example: tag1, tag2, tag3",
+    "_tip": "Placeholders: {content}, {tags_hint}."
   }
 }

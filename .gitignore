@@ -4,4 +4,4 @@ venv/
 yo.txt
 .ruff_cache
 .venv/
-chat_history.db
+data/chat_history.db

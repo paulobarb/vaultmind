@@ -15,14 +15,15 @@ import json
 import datetime
 import re
 
-from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT
-from ai_backend import get_backend, call_ai, run_startup_checks
+from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT, STUDY_DIR_NAME
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH   = Path(VAULT_PATH).expanduser().resolve()
-RECAP_FOLDER = VAULT_PATH / "Study Recaps"
+RECAP_FOLDER = VAULT_PATH / STUDY_DIR_NAME
+RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # --- COLORS ---
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
@@ -57,10 +58,12 @@ def find_recent_notes(hours: int) -> list[dict]:
     )
     
     for path_obj in all_files:
-        if any(skip in str(path_obj) for skip in EXCLUDED_FOLDERS):
+        path_str = str(path_obj)
+        if any(skip in path_str for skip in EXCLUDED_FOLDERS):
             continue
         try:
-            mtime = datetime.datetime.fromtimestamp(path_obj.stat().st_mtime)
+            stat = path_obj.stat()
+            mtime = datetime.datetime.fromtimestamp(stat.st_mtime)
             if mtime >= cutoff:
                 found.append({
                     "name":  path_obj.name,
@@ -75,7 +78,8 @@ def index_all_notes() -> dict[str, str]:
     notes = {}
     for path_obj in VAULT_PATH.rglob("*.md"):
         try:
-            if path_obj.stat().st_size > MAX_FILE_SIZE:
+            stat = path_obj.stat()
+            if stat.st_size > MAX_FILE_SIZE:
                 continue
             content = path_obj.read_text(encoding="utf-8", errors="ignore")[:2000]
             notes[path_obj.stem] = content
@@ -149,8 +153,9 @@ def generate_recap(notes_data: list[dict], all_notes: dict, backend: str) -> str
 
 def write_recap(content: str, note_names: list[str]) -> str:
     RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
-    date_str  = datetime.datetime.now().strftime("%Y-%m-%d")
-    time_str  = datetime.datetime.now().strftime("%Hh%M")
+    now = datetime.datetime.now()
+    date_str  = now.strftime("%Y-%m-%d")
+    time_str  = now.strftime("%Hh%M")
     stems = [Path(n).stem for n in note_names]
     
     if len(stems) == 1: 
@@ -190,8 +195,11 @@ def main():
     print(f"{DIM}• Loading selected note(s)...{' '*10}{RESET}", end="\r")
     notes_data = []
     for n in selected:
-        content = n["path"].read_text(encoding="utf-8", errors="ignore")
-        notes_data.append({"name": n["name"], "content": content[:MAX_NOTE_CHARS]})
+        try:
+            content = n["path"].read_text(encoding="utf-8", errors="ignore")
+            notes_data.append({"name": n["name"], "content": content[:MAX_NOTE_CHARS]})
+        except OSError:
+            continue
 
     print(f"{DIM}• Indexing vault for connections...{' '*10}{RESET}", end="\r")
     all_notes = index_all_notes()
