@@ -66,7 +66,8 @@ def process_note(path: Path, existing_tags: list, backend: str):
     
     # Filter out technical loop-terms
     final_tags = [t for t in ai_suggestions if t.lower() != "untagged"]
-    if not final_tags: final_tags = ["needs-review"]
+    if not final_tags: 
+        final_tags = ["needs-review"]
 
     # Update Metadata
     metadata['tags'] = final_tags
@@ -93,7 +94,8 @@ def main():
     if choice == '1':
         targets = []
         for p in vault.rglob("*.md"):
-            if any(skip in str(p) for skip in EXCLUDED_FOLDERS): continue
+            if any(skip in str(p) for skip in EXCLUDED_FOLDERS): 
+                continue
             content = p.read_text(encoding="utf-8", errors="ignore")
             
             if has_no_tags(content):
