@@ -53,7 +53,7 @@ def process_note(path: Path, existing_tags: list, backend: str):
     if fm_match:
         try:
             metadata = yaml.safe_load(fm_match.group(1)) or {}
-        except:
+        except Exception: # <-- FIXED: E722 No bare 'except'
             metadata = {}
         body = content[fm_match.end():].strip()
     else:
@@ -102,7 +102,8 @@ def main():
                 targets.append(p)
 
         if not targets:
-            print(f"{GREEN}All notes are properly tagged!{RESET}\n"); return
+            print(f"{GREEN}All notes are properly tagged!{RESET}\n")
+            return # <-- FIXED: E702 Split semicolon into two lines
 
         print(f"{DIM}• Found {len(targets)} note(s) missing tags. Processing...{RESET}")
         for i, path in enumerate(targets):

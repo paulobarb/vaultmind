@@ -161,11 +161,11 @@ def main():
         filename_base = Path(topic).name 
 
     else:
-        print(f"{RED}Invalid choice.{RESET}"); 
+        print(f"{RED}Invalid choice.{RESET}") 
         sys.exit(1)
 
     if not notes:
-        print(f"\n{RED}No notes found for this query.{RESET}\n"); 
+        print(f"\n{RED}No notes found for this query.{RESET}\n")
         return
 
     print(f"{DIM}• Organizing {len(notes)} notes into an MOC...{' '*15}{RESET}")
