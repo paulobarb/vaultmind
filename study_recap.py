@@ -15,14 +15,15 @@ import json
 import datetime
 import re
 
-from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT
+from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT, STUDY_DIR_NAME
 from ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 VAULT_PATH   = Path(VAULT_PATH).expanduser().resolve()
-RECAP_FOLDER = VAULT_PATH / "Study Recaps"
+RECAP_FOLDER = VAULT_PATH / STUDY_DIR_NAME
+RECAP_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # --- COLORS ---
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
