@@ -27,7 +27,7 @@ from config import (
     SAVE_CHAT_HISTORY,
     HISTORY_LIMIT,
 )
-from ai_backend import call_ai, get_backend, run_startup_checks
+from core.ai_backend import call_ai, get_backend, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -40,7 +40,7 @@ DIM    = "\033[2m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-DB_FILE = SCRIPT_DIR / "chat_history.db"
+DB_FILE = Path(__file__).parent / "data" / "chat_history.db"
 
 TEMP_CHAT = TEMPERATURES.get("chat") or TEMPERATURES.get("default") or 0.2
 

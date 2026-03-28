@@ -16,7 +16,7 @@ import datetime
 import re
 
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, HOURS_BACK, MAX_NOTE_CHARS, TEMPERATURES, RECAP_TITLE_FORMAT, STUDY_DIR_NAME
-from ai_backend import get_backend, call_ai, run_startup_checks
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))

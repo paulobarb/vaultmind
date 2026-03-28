@@ -19,7 +19,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 try:
     # Now importing MOC_TITLE_FORMAT from config
     from config import VAULT_PATH, EXCLUDED_FOLDERS, MOC_DIR_NAME, MOC_TITLE_FORMAT
-    from ai_backend import get_backend, call_ai, run_startup_checks
+    from core.ai_backend import get_backend, call_ai, run_startup_checks
 except ImportError as e:
     print(f"\n\033[31m[!] IMPORT ERROR: {e}\033[0m"); sys.exit(1)
 

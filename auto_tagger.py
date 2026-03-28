@@ -10,17 +10,13 @@ import sys
 import re
 import yaml
 from pathlib import Path
+from config import VAULT_PATH, EXCLUDED_FOLDERS
+from core.ai_backend import get_backend, run_startup_checks
+from core.tagger_logic import collect_vault_tags, get_ai_tags
 
 # --- SETUP & PATHS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
-sys.path.insert(0, str(SCRIPT_DIR))
-
-try:
-    from config import VAULT_PATH, EXCLUDED_FOLDERS
-    from ai_backend import get_backend, run_startup_checks
-    from tagger_logic import collect_vault_tags, get_ai_tags
-except ImportError as e:
-    print(f"\n\033[31m[!] IMPORT ERROR: {e}\033[0m"); sys.exit(1)
+sys.path.insert(0, str(SCRIPT_DIR.path))
 
 # --- COLORS ---
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"

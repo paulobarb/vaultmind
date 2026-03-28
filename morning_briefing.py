@@ -16,7 +16,7 @@ import sys
 import json
 import datetime
 from config import EXCLUDED_FOLDERS, MAX_FILE_SIZE, VAULT_PATH, MAX_NOTE_CHARS, TEMPERATURES, BRIEFING_TITLE_FORMAT, BRIEFING_DIR_NAME
-from ai_backend import get_backend, call_ai, run_startup_checks
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
 CYAN, GREEN, YELLOW, DIM, BOLD, RESET = "\033[96m", "\033[92m", "\033[93m", "\033[2m", "\033[1m", "\033[0m"
 

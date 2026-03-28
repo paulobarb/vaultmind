@@ -22,7 +22,7 @@ import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import MAX_FILE_SIZE, VAULT_PATH, DAYS_BACK, MAX_NOTE_CHARS, EXCLUDED_FOLDERS, CANDIDATES, TEMPERATURES, INSIGHT_TITLE_FORMAT, INSIGHTS_DIR_NAME
-from ai_backend import get_backend, call_ai, run_startup_checks
+from core.ai_backend import get_backend, call_ai, run_startup_checks
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
