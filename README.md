@@ -1,32 +1,48 @@
 # Vaultmind
 
-**Vaultmind** is a local AI tool for Obsidian. It transforms your static notes into an active knowledge base by generating automated insights, daily briefings, and study aids. All powered by [Ollama](https://ollama.com).
+AI toolkit for Obsidian. Transforms your static notes into an active knowledge base, insights, briefings, study aids, vault chat, and automated organization. Runs locally with Ollama or via NVIDIA NIM for cloud speed.
 
 [![vaultmind demo](https://img.youtube.com/vi/hqVmcqMPpUE/maxresdefault.jpg)](https://www.youtube.com/watch?v=hqVmcqMPpUE)
----
-
-## Key Features
-
-- **Weekly/Monthly Insights:** Multi-lens analysis (Emotional, Productivity, Patterns) of your recent activity.
-- **Daily Morning Briefings:** Summarizes yesterday's progress and extracts pending tasks for today.
-- **Intelligent Study Recaps:** Automatically generates spaced-repetition questions and finds connections to older notes.
-- **Smart Ingestion:** A two-pass engine that converts raw text dumps and transcripts into structured, tagged Obsidian notes.
 
 ---
 
-## Hardware Requirements & Ollama models
+## What it does
 
-Vaultmind performance depends entirely on your local LLM runner (Ollama).
+| Script | Description |
+| :--- | :--- |
+| `generate_insights.py` | Multi-lens weekly analysis with persistent AI memory |
+| `morning_briefing.py` | Daily briefing with pending tasks and suggested focus |
+| `study_recap.py` | Spaced repetition questions from your study notes |
+| `txt_to_notes.py` | Converts any text into structured, linked Obsidian notes |
+| `chat.py` | Persistent vault-aware conversation with SQLite memory |
+| `auto_tagger.py` | Scans and injects missing tags without touching existing metadata |
+| `moc_generator.py` | Builds Maps of Content to connect orphan notes |
 
-> **Tip:** If you are unsure what your specific hardware can handle, check the [LLM Hardware Requirements Guide](https://onyx.app/llm-hardware-requirements) for a detailed breakdown of parameters vs. VRAM.
+---
 
-While Ollama supports hundreds of models, Vaultmind has been specifically tested with the following:
+## Models & Backends
 
-* **DeepSeek-R1 (8B):** The recommended default. Superior for the `generate_insights.py` script due to its advanced reasoning and low hallucination rate.
-* **Llama 3.1 (8B):** Runs a little faster but with a little less accuracy.
-* **Llama 3.2 (3B):** Optimized (kinda) for edge devices and systems without dedicated GPUs.
+### Local — Ollama (privacy first)
 
-**Disclaimer:** Using models not listed above may result in unexpected output formats, conversational "chatter", or failure to parse the JSON planning phase in `txt_to_notes.py`.
+Runs entirely on your machine. No data leaves your vault.
+
+| Model | Best for |
+| :--- | :--- |
+| `deepseek-r1:8b` | Recommended default — best reasoning, lowest hallucination |
+| `llama3.1:8b` | Faster, slightly less accurate |
+| `llama3.2:3b` | Edge devices and systems without a dedicated GPU |
+
+> Not sure what your hardware can handle? Check the [LLM Hardware Requirements Guide](https://onyx.app/llm-hardware-requirements).
+
+### Cloud — NVIDIA NIM (speed & low-end hardware)
+
+Offloads processing to NVIDIA's infrastructure. Useful if you don't have a GPU or want to run 70B+ models.
+
+- Tested model: `meta/llama-3.3-70b-instruct`
+- Requires an API key and internet connection
+- Free tier has rate limits, but you're unlikely to hit them for normal vault use
+
+[Get your NVIDIA NIM API key](https://build.nvidia.com/explore/discover)
 
 ---
 
@@ -34,55 +50,72 @@ While Ollama supports hundreds of models, Vaultmind has been specifically tested
 
 ### 1. Prerequisites
 
-- [Ollama](https://ollama.com) installed and running
-- Python 3.10 or higher
+- Python 3.10+
+- [Ollama](https://ollama.com) installed (if running locally)
 
-### 2. Setup
+### 2. Clone and install
 
 ```bash
-# Clone the repository
 git clone https://github.com/paulobarb/vaultmind.git
 cd vaultmind
 
-# Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install requests
+pip install requests pyyaml
 ```
 
-### 3. Initialize Model
+### 3. Choose your backend
 
-Choose a model:
-
+**Option A — Local (Ollama)**
 ```bash
 ollama pull deepseek-r1:latest
+```
+In `config.py`, set `USE_NVIDIA_NIM = False` and verify the model name matches.
+
+**Option B — Cloud (NVIDIA NIM)**
+
+In `config.py`, set `USE_NVIDIA_NIM = True` and paste your API key:
+```python
+NVIDIA_API_KEY = "your_key_here"
 ```
 
 ---
 
 ## Configuration
 
-Vaultmind is customizable via `config.py`.
+All settings live in `config.py`. The most important ones:
 
 | Setting | Description |
 | :--- | :--- |
-| `VAULT_PATH` | Absolute path to your Obsidian vault |
-| `NUM_CTX` | Context window size — increase for long notes, decrease if you encounter VRAM spillover |
-| `TEMPERATURE` | `0.2` for factual briefings, `0.7` for more creative insights |
-| `EXCLUDED_FOLDERS` | List of folders the AI should ignore (e.g. Templates, Archive) |
+| `USE_NVIDIA_NIM` | `True` for cloud, `False` for local Ollama |
+| `VAULT_PATH` | Path to your Obsidian vault |
+| `NUM_CTX` | Context window size — increase for larger models or long notes |
+| `TEMPERATURE` | `0.2` for factual output, `0.7` for creative insights |
+| `EXCLUDED_FOLDERS` | Folders the AI should ignore (e.g. Templates, Archive) |
+| `SAVE_CHAT_HISTORY` | `True` to persist chat history in SQLite, `False` for amnesiac mode |
+
+> If you upgrade to larger models (35B, 70B, or NVIDIA NIM), increase `NUM_CTX` and `MAX_NOTE_CHARS` for better results.
+
+All prompts are in `prompts.json`.
 
 ---
 
 ## The Toolkit
 
-### ☀️ Morning Briefing (`morning_briefing.py`)
+### ☀️ Morning Briefing
 
-The Daily Momentum Builder
+Splits your recent notes into "Yesterday" (what you executed) and "Today" (what you planned). Finds unfinished checkboxes and generates a suggested focus so you never start the day cold.
 
-- It categorizes notes into "Yesterday" (execution) and "Today" (planning). It scans for unfinished tasks (empty checkboxes) and unresolved thoughts.
-- It provides a "Suggested Focus," acting as a bridge between the work you finished and the work you haven't started yet, ensuring you never wake up with a "cold start" in your vault.
+```bash
+python morning_briefing.py
+```
+
+---
+
+### 📊 Weekly Insights
+
+Runs your notes through parallel analysis lenses (Therapist, Coach, Pattern Detector, Strengths, Connections). Reads `AI_State.md` at startup, a compressed history of previous weeks and compares it against your current notes to detect drift and track long-term progress. Updates the state file after each run.
 
 ```bash
 python generate_insights.py
@@ -90,25 +123,9 @@ python generate_insights.py
 
 ---
 
-### 📊 Weekly Insights (`generate_insights.py`)
+### 🧠 Study Recap
 
-It uses a Parallel Processing model to run your notes through multiple "lenses" (like a Therapist or a Pattern Detector) simultaneously to save time.
-
-- It reads a file called AI_State.md at startup. This file contains a compressed history of who you were last week.
-- The AI compares your current notes against that state to identify "drift"—checking if you are actually making progress on your goals or just repeating the same cycles. It then updates the state file, making the AI following your journey every time you run it.
-
-```bash
-python generate_insights.py
-```
-
----
-
-### 🧠 Study Recap (`study_recap.py`)
-
-This is an Interactive Tool designed to fight the "forgetting curve". Unlike the other scripts, this one waits for your input.
-
-- It auto-detects notes modified in a specific window (e.g., your last 24 hours of studying) and lets you manually refine the list. It then cross-references these with the rest of your vault to find "hidden connections."
-- The Result: It generates a dedicated recap note filled with Spaced Repetition questions. It transforms passive reading into active testing.
+Auto-detects notes modified in your last study session and lets you refine the list. Cross-references them with your full vault to find hidden connections, then generates spaced repetition questions to fight the forgetting curve.
 
 ```bash
 python study_recap.py
@@ -116,12 +133,12 @@ python study_recap.py
 
 ---
 
-### 📥 TXT to Notes (txt_to_notes.py`)
+### 📥 Text to Notes
 
-This script handles the "messy" data—transcripts, braindumps, or long articles. It uses a Plan-then-Execute architecture to prevent the AI from getting lost in long texts.
+Two-pass ingestion engine for messy data. transcripts, braindumps, articles.
 
-- Pass 1 (Planning): The AI reads the raw text and creates a JSON "blueprint." It decides how many notes are needed, what the titles should be, and which existing tags from your vault to reuse.
-- Pass 2 (Writing): Using that blueprint, it writes the actual content, automatically creating [[Wikilinks]] between the new notes and your existing knowledge base.
+- **Pass 1 (Plan):** AI reads the raw text and creates a blueprint — how many notes, what titles, which existing vault tags to reuse
+- **Pass 2 (Write):** Writes the actual content with `[[Wikilinks]]` to your existing knowledge base
 
 ```bash
 python txt_to_notes.py my_transcript.txt
@@ -129,30 +146,89 @@ python txt_to_notes.py my_transcript.txt
 
 ---
 
-## Customization
+### 💬 Vault Chat
 
-Edit `prompts.json` to change how the AI speaks or what it focuses on.
+Conversation engine with access to your vault. Saves history to a local SQLite database so the AI maintains context across sessions. Commands:
+
+```
+/memories       list saved exchanges
+/forget <id>    delete a specific exchange
+/clear          wipe all history
+/exit           quit
+```
+
+```bash
+python chat.py
+```
 
 ---
 
-## Automation (Linux / macOS)
+### 🏷️ Auto Tagger
 
-Add scripts to your crontab to have briefings waiting every morning (only works if you have your machine 24/7 on):
+Scans for notes missing tags and injects them without touching existing metadata. Supports non-English characters (á, ç, ú). Two modes:
+
+- **Vault-wide:** finds all untagged notes automatically
+- **Targeted:** force re-tag a specific file by name
 
 ```bash
-# Run morning briefing at 7:00 AM daily
+python auto_tagger.py
+```
+
+---
+
+### 🗺️ MOC Generator
+
+Builds a Map of Content for your vault in three modes:
+
+- **Tag/Keyword** - finds all notes containing a specific tag or keyword (e.g. `#productivity`)
+- **Anchor Note** - finds all notes that link to a specific note (e.g. `MyNote`)
+- **Folder Index** - indexes all notes inside a specific folder (e.g. `Projects/MyProject`)
+
+Generates a structured index note with automatic `[[Wikilinks]]`.
+```bash
+python moc_generator.py
+```
+
+---
+
+## Automation
+
+Add to crontab for automatic daily and weekly runs (machine must be on):
+
+```bash
+# Morning briefing — every day at 7am
 0 7 * * * /path/to/vaultmind/venv/bin/python /path/to/vaultmind/morning_briefing.py
 
-# Run weekly insights every Sunday at 8:00 AM
+# Weekly insights — every Sunday at 8am
 0 8 * * 0 /path/to/vaultmind/venv/bin/python /path/to/vaultmind/generate_insights.py
 ```
 
 ---
 
-## Limitations & Accuracy
+## Project structure
 
-- **Context Limits:** Very long notes may require increasing `NUM_CTX` in `config.py`.
-- **Local Speed:** Performance is tied to your hardware. Large-scale analysis is significantly faster with a dedicated GPU.
+```
+vaultmind/
+├── core/                   # Shared AI logic and backend routing
+├── data/                   # Local SQLite databases
+├── config.py               # All settings — start here
+├── prompts.json            # All AI prompts — edit to customize behavior
+├── auto_tagger.py
+├── chat.py
+├── generate_insights.py
+├── moc_generator.py
+├── morning_briefing.py
+├── study_recap.py
+└── txt_to_notes.py
+```
+
+---
+
+## Limitations
+
+- **AI variability:** Output depends on your model. Always verify especially the Pending section in briefings.
+- **Hardware:** CPU only or weak GPU machines will be slow on multi-pass scripts like `txt_to_notes.py`.
+- **Personal tool:** Built for a specific workflow. Edit `prompts.json` or the scripts to fit yours.
 
 ---
 
